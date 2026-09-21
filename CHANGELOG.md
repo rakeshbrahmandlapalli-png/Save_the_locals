@@ -1,5 +1,11 @@
 # Changelog
 
+## Step 2 — Prove shop isolation
+
+- Added a self-cleaning SQL acceptance test with two throwaway shops and staff identities.
+- Added bidirectional checks for orders, customers, and inactive catalogue rows used by editing screens.
+- Added non-empty controls that read the same rows with RLS disabled.
+
 ## Step 1 — Project, database, one shop
 
 - Created the Next.js App Router TypeScript project with Tailwind CSS.
