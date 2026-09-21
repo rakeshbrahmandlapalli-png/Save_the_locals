@@ -1,0 +1,36 @@
+export const copy = {
+  en: {
+    searchPlaceholder: "Search groceries",
+    allCategories: "All",
+    add: "Add",
+    removeOne: "Remove one",
+    addOne: "Add one",
+    basket: "Basket",
+    items: "items",
+    item: "item",
+    minimumReached: "Minimum order reached",
+    minimumRemaining: (amount: string) => `Add ₹${amount} more to reach the minimum`,
+    emptySearch: "No products match your search.",
+    language: "తెలుగు",
+    openBasket: "View basket",
+    deliveryArea: "Neighbourhood delivery",
+  },
+  te: {
+    searchPlaceholder: "సరుకులను వెతకండి",
+    allCategories: "అన్నీ",
+    add: "జోడించు",
+    removeOne: "ఒకటి తీసివేయండి",
+    addOne: "మరొకటి జోడించండి",
+    basket: "బాస్కెట్",
+    items: "వస్తువులు",
+    item: "వస్తువు",
+    minimumReached: "కనీస ఆర్డర్ పూర్తయింది",
+    minimumRemaining: (amount: string) => `కనీస ఆర్డర్‌కు ఇంకా ₹${amount} జోడించండి`,
+    emptySearch: "మీ శోధనకు సరిపోలే ఉత్పత్తులు లేవు.",
+    language: "English",
+    openBasket: "బాస్కెట్ చూడండి",
+    deliveryArea: "సమీప ప్రాంత డెలివరీ",
+  },
+} as const;
+
+export type Language = keyof typeof copy;

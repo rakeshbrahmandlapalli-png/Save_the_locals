@@ -1,5 +1,12 @@
 # Decisions
 
+## Step 3
+
+- **Initial data path:** the storefront is server-rendered from Supabase so the catalogue and prices arrive in the first HTML response on slow connections.
+- **Language display:** English and Telugu names are both visible, with a compact toggle choosing which is primary.
+- **Attribution lifetime:** `src` is stored in `sessionStorage`, scoped by shop slug, so it survives navigation during the visit without leaking across shops.
+- **Visual direction:** screens use familiar retail controls, compact spacing, restrained shop colours, and no gradients or decorative AI-startup styling.
+
 ## Step 2
 
 - **Isolation test data:** deterministic UUIDs and `.invalid` email addresses make the test repeatable and clearly non-production.
