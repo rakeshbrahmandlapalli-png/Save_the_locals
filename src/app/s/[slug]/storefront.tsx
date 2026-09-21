@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { copy, type Language } from "@/lib/copy";
+import { createPublicClient } from "@/lib/supabase";
 import type { Category, Product, Shop } from "./page";
 
 type Quantities = Record<string, number>;
@@ -31,6 +32,11 @@ export function Storefront({
   const [categoryId, setCategoryId] = useState<string>("all");
   const [quantities, setQuantities] = useState<Quantities>({});
   const [source, setSource] = useState("direct");
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [orderCode, setOrderCode] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState("");
+  const [form, setForm] = useState({ name: "", phone: "", fulfilment: "delivery", address: "", payment: "cod", notes: "" });
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
   const t = copy[language];
 
@@ -68,6 +74,29 @@ export function Storefront({
       }
       return { ...current, [productId]: next };
     });
+  }
+
+  async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitting(true);
+    setSubmitError("");
+    const supabase = createPublicClient();
+    const items = Object.entries(quantities).map(([product_id, qty]) => ({ product_id, qty }));
+    const { data, error } = await supabase.rpc("place_order", {
+      shop_slug: shop.slug,
+      items,
+      customer: { name: form.name, phone: form.phone, notes: form.notes },
+      fulfilment: form.fulfilment,
+      address: form.fulfilment === "delivery" ? form.address : "",
+      payment_method: form.payment,
+      source,
+    });
+    setSubmitting(false);
+    if (error) {
+      setSubmitError(error.message);
+      return;
+    }
+    setOrderCode(data as string);
   }
 
   return (
@@ -168,7 +197,7 @@ export function Storefront({
               <p className="text-sm font-semibold">{itemCount} {itemCount === 1 ? t.item : t.items}</p>
               <p className="text-2xl font-bold">₹{formatMoney(total)}</p>
             </div>
-            <button type="button" className="rounded-xl px-5 py-3 text-sm font-bold text-white" style={{ backgroundColor: brandColour }}>
+            <button type="button" onClick={() => setCheckoutOpen(true)} disabled={remaining > 0} className="rounded-xl px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45" style={{ backgroundColor: brandColour }}>
               {t.openBasket}
             </button>
           </div>
@@ -177,8 +206,54 @@ export function Storefront({
           </p>
         </aside>
       )}
+
+      {checkoutOpen && (
+        <div className="fixed inset-0 z-30 overflow-y-auto bg-slate-950/50 px-3 py-5" role="dialog" aria-modal="true" aria-label="Checkout">
+          <section className="mx-auto max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+            {orderCode ? (
+              <div className="py-8 text-center">
+                <p className="text-sm font-semibold text-emerald-700">{t.orderPlaced}</p>
+                <h2 className="mt-2 text-2xl font-bold">{t.orderCode}</h2>
+                <p className="mt-4 text-4xl font-black tracking-[0.18em]">{orderCode}</p>
+                <p className="mt-3 text-sm text-slate-600">{t.keepCode}</p>
+                <a href={`/s/${shop.slug}/status?code=${orderCode}`} className="mt-6 inline-block rounded-xl px-5 py-3 font-bold text-white" style={{ backgroundColor: brandColour }}>{t.checkStatus}</a>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between gap-4">
+                  <div><p className="text-sm text-slate-500">{itemCount} {t.items}</p><h2 className="text-2xl font-bold">{t.checkout}</h2></div>
+                  <button type="button" onClick={() => setCheckoutOpen(false)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{t.close}</button>
+                </div>
+                <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm">
+                  <div className="flex justify-between"><span>Items</span><strong>₹{formatMoney(total)}</strong></div>
+                  <div className="mt-2 flex justify-between"><span>{t.delivery}</span><strong>{form.fulfilment === "delivery" ? `₹${formatMoney(shop.delivery_fee)}` : t.free}</strong></div>
+                  <div className="mt-3 flex justify-between border-t border-slate-200 pt-3 text-base"><span>{t.total}</span><strong>₹{formatMoney(total + (form.fulfilment === "delivery" ? shop.delivery_fee : 0))}</strong></div>
+                </div>
+                <form onSubmit={submitOrder} className="mt-5 space-y-4">
+                  <Field label={t.name}><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" autoComplete="name" /></Field>
+                  <Field label={t.mobile}><input required inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder={t.phoneHint} autoComplete="tel" /></Field>
+                  <fieldset><legend className="mb-2 text-sm font-bold">{t.fulfilmentQuestion}</legend><div className="grid grid-cols-2 gap-2"><Choice label={t.delivery} checked={form.fulfilment === "delivery"} onChange={() => setForm({ ...form, fulfilment: "delivery" })} /><Choice label={t.pickup} checked={form.fulfilment === "pickup"} onChange={() => setForm({ ...form, fulfilment: "pickup" })} /></div></fieldset>
+                  {form.fulfilment === "delivery" && <Field label={t.address}><textarea required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input min-h-20" autoComplete="street-address" /></Field>}
+                  <fieldset><legend className="mb-2 text-sm font-bold">{t.payment}</legend><div className="grid grid-cols-2 gap-2"><Choice label={t.cash} checked={form.payment === "cod"} onChange={() => setForm({ ...form, payment: "cod" })} /><Choice label={t.upi} checked={form.payment === "upi_on_delivery"} onChange={() => setForm({ ...form, payment: "upi_on_delivery" })} /></div></fieldset>
+                  <Field label={t.notes}><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-20" /></Field>
+                  {submitError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{submitError}</p>}
+                  <button disabled={submitting} className="w-full rounded-xl px-5 py-3.5 font-bold text-white disabled:opacity-60" style={{ backgroundColor: brandColour }}>{submitting ? t.placingOrder : t.placeOrder}</button>
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </main>
   );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block"><span className="mb-2 block text-sm font-bold">{label}</span>{children}</label>;
+}
+
+function Choice({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+  return <label className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-semibold ${checked ? "border-slate-900 bg-slate-50" : "border-slate-300"}`}><input type="radio" checked={checked} onChange={onChange} />{label}</label>;
 }
 
 function CategoryButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {

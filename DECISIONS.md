@@ -1,5 +1,13 @@
 # Decisions
 
+## Step 4
+
+- **Checkout shape:** checkout stays in a focused mobile sheet so the basket remains visible and no client-side cart persistence is required yet.
+- **Money boundary:** the browser displays an estimate, but sends only product IDs and quantities; Postgres re-reads prices, stock, minimum order, and delivery fee before inserting an order.
+- **Status privacy:** order status is not publicly queryable by code alone; the code and normalised customer phone must match.
+- **Rate-limit scope:** the required five-orders-per-hour rule is enforced per shop and normalised phone inside the same security-definer transaction.
+- **Extension resolution:** `place_order` exposes only Supabase's trusted `extensions` schema in its function search path; application tables remain explicitly schema-qualified.
+
 ## Step 3
 
 - **Initial data path:** the storefront is server-rendered from Supabase so the catalogue and prices arrive in the first HTML response on slow connections.

@@ -1,5 +1,13 @@
 # Changelog
 
+## Step 4 — Checkout and order placement
+
+- Added a mobile checkout for customer details, delivery or pickup, address, cash or UPI on delivery, and optional notes.
+- Connected checkout exclusively to the server-owned `place_order` function and added order confirmation.
+- Added a private order-status lookup requiring both the order code and customer phone.
+- Added migration `003_order_code_function_path.sql` to make secure order-code generation work with Supabase's extension schema.
+- Added an executable acceptance test for price tampering, minimum-order enforcement, and hourly order limits.
+
 ## Step 3 — Mobile storefront
 
 - Added `/s/[slug]` backed by the public Supabase catalogue policies.

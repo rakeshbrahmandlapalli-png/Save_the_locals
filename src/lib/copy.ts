@@ -14,6 +14,13 @@ export const copy = {
     language: "తెలుగు",
     openBasket: "View basket",
     deliveryArea: "Neighbourhood delivery",
+    checkout: "Checkout", close: "Close", orderPlaced: "Order placed", orderCode: "Your order code",
+    keepCode: "Keep this code to check your order status.", checkStatus: "Check order status",
+    name: "Name", mobile: "Mobile number", phoneHint: "10-digit Indian mobile",
+    fulfilmentQuestion: "How would you like it?", delivery: "Delivery", pickup: "Pickup",
+    address: "Delivery address", payment: "Payment on delivery", cash: "Cash", upi: "UPI",
+    notes: "Anything else? (optional)", placeOrder: "Place order", placingOrder: "Placing order…",
+    free: "Free", total: "Total",
   },
   te: {
     searchPlaceholder: "సరుకులను వెతకండి",
@@ -30,7 +37,27 @@ export const copy = {
     language: "English",
     openBasket: "బాస్కెట్ చూడండి",
     deliveryArea: "సమీప ప్రాంత డెలివరీ",
+    checkout: "చెక్అవుట్", close: "మూసివేయి", orderPlaced: "ఆర్డర్ నమోదైంది", orderCode: "మీ ఆర్డర్ కోడ్",
+    keepCode: "ఆర్డర్ స్థితిని తెలుసుకోవడానికి ఈ కోడ్‌ను ఉంచుకోండి.", checkStatus: "ఆర్డర్ స్థితి చూడండి",
+    name: "పేరు", mobile: "మొబైల్ నంబర్", phoneHint: "10 అంకెల భారతీయ మొబైల్",
+    fulfilmentQuestion: "ఎలా పొందాలనుకుంటున్నారు?", delivery: "డెలివరీ", pickup: "దుకాణం వద్ద తీసుకోవడం",
+    address: "డెలివరీ చిరునామా", payment: "డెలివరీ సమయంలో చెల్లింపు", cash: "నగదు", upi: "UPI",
+    notes: "ఇంకేమైనా? (ఐచ్ఛికం)", placeOrder: "ఆర్డర్ చేయండి", placingOrder: "ఆర్డర్ చేస్తున్నాం…",
+    free: "ఉచితం", total: "మొత్తం",
   },
 } as const;
 
 export type Language = keyof typeof copy;
+
+export const statusCopy = {
+  back: "Back to shop",
+  title: "Check order status",
+  instructions: "Enter your order code and mobile number.",
+  code: "Order code",
+  mobile: "Mobile number",
+  submit: "Check status",
+  notFound: "No matching order found.",
+  order: "Order",
+  method: "Method",
+  total: "Total",
+};
