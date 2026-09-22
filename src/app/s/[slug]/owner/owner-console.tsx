@@ -1,46 +1,30 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getBrowserClient } from "@/lib/supabase-browser";
+import Link from "next/link";
+import { useShopStaffSession } from "@/lib/use-shop-staff-session";
 
 type Item = { id: string; name: string; unit: string; price: number; qty: number; status: string; substitute_name: string | null; substitute_price: number | null };
 type Order = { id: string; code: string; status: string; fulfilment: string; address: string | null; notes: string | null; payment_method: string; total: number; source: string; is_new_customer: boolean; created_at: string; customer: { name: string | null; phone: string }; items: Item[] };
-type Shop = { id: string; name: string; phone: string };
 
 const statuses = ["confirmed", "out_for_delivery", "delivered", "cancelled"] as const;
 
 export function OwnerConsole({ slug }: { slug: string }) {
-  const supabase = getBrowserClient();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [shop, setShop] = useState<Shop | null>(null);
+  const { supabase, email, setEmail, password, setPassword, shop, signedIn, authorised, message, setMessage, signIn, signOut } = useShopStaffSession(slug);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [signedIn, setSignedIn] = useState(false);
-  const [authorised, setAuthorised] = useState<boolean | null>(null);
   const [alertsEnabled, setAlertsEnabled] = useState(false);
-  const [message, setMessage] = useState("");
 
   const loadOrders = useCallback(async (shopId: string) => {
     const { data, error } = await supabase.from("orders").select("id,code,status,fulfilment,address,notes,payment_method,total,source,is_new_customer,created_at,customer:customers(name,phone),items:order_items(id,name,unit,price,qty,status,substitute_name,substitute_price)").eq("shop_id", shopId).order("created_at", { ascending: false });
     if (error) { setMessage(error.message); return; }
     setOrders((data ?? []) as unknown as Order[]);
-  }, [supabase]);
-
-  const initialise = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    setSignedIn(Boolean(session));
-    if (!session) { setAuthorised(null); return; }
-    const { data: foundShop } = await supabase.from("shops").select("id,name,phone").eq("slug", slug).single();
-    if (!foundShop) { setMessage("Shop not found."); return; }
-    const { data: membership } = await supabase.from("shop_staff").select("role").eq("shop_id", foundShop.id).maybeSingle();
-    if (!membership) { setShop(foundShop); setAuthorised(false); return; }
-    setShop(foundShop); setAuthorised(true); await loadOrders(foundShop.id);
-  }, [loadOrders, slug, supabase]);
+  }, [setMessage, supabase]);
 
   useEffect(() => {
-    const task = window.setTimeout(() => void initialise(), 0);
+    if (!shop || !authorised) return;
+    const task = window.setTimeout(() => void loadOrders(shop.id), 0);
     return () => window.clearTimeout(task);
-  }, [initialise]);
+  }, [authorised, loadOrders, shop]);
 
   useEffect(() => {
     if (!shop || !authorised) return;
@@ -50,13 +34,6 @@ export function OwnerConsole({ slug }: { slug: string }) {
     }).subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [alertsEnabled, authorised, loadOrders, shop, supabase]);
-
-  async function signIn(event: React.FormEvent) {
-    event.preventDefault(); setMessage("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setMessage(error.message); return; }
-    await initialise();
-  }
 
   async function updateStatus(orderId: string, next: string) {
     const { error } = await supabase.rpc("owner_update_order_status", { target_order_id: orderId, next_status: next });
@@ -76,10 +53,10 @@ export function OwnerConsole({ slug }: { slug: string }) {
   }
 
   if (!signedIn) return <main className="mx-auto min-h-screen max-w-md px-4 py-12"><p className="text-sm font-semibold text-slate-500">Owner console</p><h1 className="mt-2 text-3xl font-bold">Sign in to your shop</h1><p className="mt-2 text-sm text-slate-600">Use your own owner email and password.</p><form onSubmit={signIn} className="mt-8 space-y-4"><label className="block"><span className="mb-2 block text-sm font-bold">Email</span><input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label><label className="block"><span className="mb-2 block text-sm font-bold">Password</span><input className="input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} /></label>{message && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{message}</p>}<button className="w-full rounded-xl bg-slate-900 px-4 py-3 font-bold text-white">Sign in</button></form></main>;
-  if (authorised === false) return <main className="mx-auto max-w-lg px-4 py-16"><h1 className="text-2xl font-bold">Access denied</h1><p className="mt-2 text-slate-600">This account is not staff for {shop?.name}.</p><button onClick={() => void supabase.auth.signOut().then(initialise)} className="mt-6 rounded-lg border px-4 py-2 font-semibold">Sign out</button></main>;
+  if (authorised === false) return <main className="mx-auto max-w-lg px-4 py-16"><h1 className="text-2xl font-bold">Access denied</h1><p className="mt-2 text-slate-600">This account is not staff for {shop?.name}.</p><button onClick={() => void signOut()} className="mt-6 rounded-lg border px-4 py-2 font-semibold">Sign out</button></main>;
   if (!authorised || !shop) return <main className="p-8 text-center">Loading owner console…</main>;
 
-  return <main className="mx-auto min-h-screen max-w-3xl bg-slate-50 pb-16 text-slate-950"><header className="sticky top-0 z-10 border-b bg-white px-4 py-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Owner console</p><h1 className="text-xl font-bold">{shop.name}</h1></div><button onClick={() => { setAlertsEnabled(true); playAlert(); }} className={`rounded-lg px-3 py-2 text-sm font-bold ${alertsEnabled ? "bg-emerald-50 text-emerald-800" : "bg-slate-900 text-white"}`}>{alertsEnabled ? "Sound alerts on" : "Enable sound"}</button></div></header>
+  return <main className="mx-auto min-h-screen max-w-3xl bg-slate-50 pb-16 text-slate-950"><header className="sticky top-0 z-10 border-b bg-white px-4 py-4"><div className="flex items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Owner console</p><h1 className="text-xl font-bold">{shop.name}</h1></div><div className="flex items-center gap-2"><Link href={`/s/${slug}/owner/catalogue`} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-bold">Catalogue</Link><button onClick={() => { setAlertsEnabled(true); playAlert(); }} className={`rounded-lg px-3 py-2 text-sm font-bold ${alertsEnabled ? "bg-emerald-50 text-emerald-800" : "bg-slate-900 text-white"}`}>{alertsEnabled ? "Sound alerts on" : "Enable sound"}</button></div></div></header>
     {message && <p className="m-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{message}</p>}
     <section className="space-y-4 p-4">{orders.length === 0 ? <p className="rounded-xl border bg-white p-8 text-center text-slate-600">No orders yet.</p> : orders.map((order) => <OrderCard key={order.id} order={order} onStatus={updateStatus} onItem={resolveItem} />)}</section>
   </main>;

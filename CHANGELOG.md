@@ -1,5 +1,20 @@
 # Changelog
 
+## Step 6 — Catalogue tools
+
+- Added `/s/[slug]/owner/catalogue`: add, edit, and delete categories and
+  products, an in-stock toggle, a hide/show (`active`) toggle, and inline
+  price editing.
+- Added CSV import with a preview step: each row is validated (category,
+  name, unit, and a non-negative price are required) before anything is
+  written, invalid rows are shown with the specific problem and skipped,
+  and new category names are created automatically.
+- Extracted the shared sign-in/staff-membership check from the owner
+  console into `useShopStaffSession`, now used by both owner screens.
+- No new migration: products and categories were already directly
+  writable by staff under RLS (only orders/items/customers were locked
+  down to RPCs in Step 5).
+
 ## Step 5 — Owner console
 
 - Added a staff sign-in console at `/s/[slug]/owner` showing live orders with

@@ -1,5 +1,18 @@
 # Decisions
 
+## Step 6
+
+- **CSV columns:** `category, name, name_local, unit, price, in_stock`.
+  `name_local` and `in_stock` are optional; the other four are required.
+  This matches the shop's own price-board language rather than inventing
+  a stricter format the owner would have to learn.
+- **Deleting a category never deletes products.** `category_id` is set to
+  null (already the schema's behaviour); a product only disappears from
+  the catalogue if it is explicitly deleted or hidden.
+- **Import is all-or-nothing per row, not per file.** Valid rows import
+  even if other rows in the same CSV have errors, so one bad price
+  doesn't block the other 99 correct ones.
+
 ## Step 5
 
 - **Write path:** direct insert/update/delete on `customers`, `orders`,
