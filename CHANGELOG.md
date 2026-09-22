@@ -1,5 +1,17 @@
 # Changelog
 
+## Step 8 — "Same as last time"
+
+- Added a card at the top of the storefront: enter a mobile number, see
+  your most recent order at this shop.
+- Each item is checked against today's catalogue: unavailable items are
+  named and excluded, price changes are shown, everything else can be
+  added to the basket in one tap.
+- Added `last_order_items(shop_slug, phone)`, a security-definer function
+  that finds the customer's most recent order by phone alone (no order
+  code — see DECISIONS.md for the trade-off) and joins each item to the
+  live product row.
+
 ## Step 6 — Catalogue tools
 
 - Added `/s/[slug]/owner/catalogue`: add, edit, and delete categories and

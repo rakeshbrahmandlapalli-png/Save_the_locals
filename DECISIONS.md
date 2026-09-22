@@ -1,5 +1,25 @@
 # Decisions
 
+## Step 8
+
+- **Phone alone, not phone + order code.** `order_status` deliberately
+  needs both because a customer checking status already has the code
+  from their confirmation screen. A customer coming back a month later
+  to repeat an order will not have kept it, so requiring it here would
+  defeat the feature. Trade-off: knowing someone's phone number is
+  enough to see the item list (not the price total, name, or address)
+  of their last order at this shop. For a neighbourhood kirana's grocery
+  list this is low-sensitivity, but it is a real, accepted trade-off,
+  not an oversight.
+- **Repeats the items they originally asked for, not what was actually
+  delivered.** If an item was substituted or skipped last time, "same as
+  last time" still offers the original item (re-checked against today's
+  stock), because that is what "the same" means to the customer.
+- **Availability is live, not cached.** A product that is out of stock,
+  inactive, or deleted is excluded and named; nothing about "same as
+  last time" is allowed to bypass the storefront's normal stock and
+  price rules.
+
 ## Step 6
 
 - **CSV columns:** `category, name, name_local, unit, price, in_stock`.

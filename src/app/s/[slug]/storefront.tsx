@@ -7,6 +7,20 @@ import type { Category, Product, Shop } from "./page";
 
 type Quantities = Record<string, number>;
 
+type RepeatItem = {
+  order_code: string;
+  ordered_at: string;
+  product_id: string | null;
+  ordered_name: string;
+  qty: number;
+  price_paid: number;
+  available: boolean;
+  current_name: string | null;
+  current_name_local: string | null;
+  current_unit: string | null;
+  current_price: number | null;
+};
+
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
 }
@@ -37,6 +51,11 @@ export function Storefront({
   const [orderCode, setOrderCode] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", fulfilment: "delivery", address: "", payment: "cod", notes: "" });
+  const [repeatPhone, setRepeatPhone] = useState("");
+  const [repeatStatus, setRepeatStatus] = useState<"idle" | "loading" | "found" | "empty" | "error">("idle");
+  const [repeatItems, setRepeatItems] = useState<RepeatItem[]>([]);
+  const [repeatError, setRepeatError] = useState("");
+  const [repeatAdded, setRepeatAdded] = useState(false);
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
   const t = copy[language];
 
@@ -99,6 +118,35 @@ export function Storefront({
     setOrderCode(data as string);
   }
 
+  async function checkRepeatOrder(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setRepeatStatus("loading");
+    setRepeatError("");
+    setRepeatAdded(false);
+    const supabase = createPublicClient();
+    const { data, error } = await supabase.rpc("last_order_items", { shop_slug: shop.slug, phone: repeatPhone });
+    if (error) {
+      setRepeatStatus("error");
+      setRepeatError(error.message);
+      return;
+    }
+    const rows = (data ?? []) as RepeatItem[];
+    setRepeatItems(rows);
+    setRepeatStatus(rows.length > 0 ? "found" : "empty");
+  }
+
+  function addRepeatItemsToBasket() {
+    setQuantities((current) => {
+      const next = { ...current };
+      for (const item of repeatItems) {
+        if (item.available && item.product_id) next[item.product_id] = (next[item.product_id] ?? 0) + item.qty;
+      }
+      return next;
+    });
+    setForm((current) => ({ ...current, phone: repeatPhone }));
+    setRepeatAdded(true);
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-white pb-36 text-slate-950" data-order-source={source}>
       <header className="border-b border-slate-200 px-4 pb-5 pt-6" style={{ borderTop: `5px solid ${brandColour}` }}>
@@ -120,6 +168,49 @@ export function Storefront({
           </button>
         </div>
       </header>
+
+      <section className="px-4 pt-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <h2 className="text-sm font-bold">{t.repeatTitle}</h2>
+          <p className="mt-1 text-xs text-slate-600">{t.repeatPrompt}</p>
+          <form onSubmit={checkRepeatOrder} className="mt-3 flex gap-2">
+            <label className="sr-only" htmlFor="repeat-phone">{t.mobile}</label>
+            <input id="repeat-phone" required inputMode="tel" value={repeatPhone} onChange={(e) => setRepeatPhone(e.target.value)} placeholder={t.phoneHint} className="input flex-1" />
+            <button disabled={repeatStatus === "loading"} className="shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60" style={{ backgroundColor: brandColour }}>
+              {repeatStatus === "loading" ? t.repeatChecking : t.repeatCheck}
+            </button>
+          </form>
+          {repeatStatus === "error" && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{repeatError}</p>}
+          {repeatStatus === "empty" && <p className="mt-3 text-sm text-slate-600">{t.repeatNotFound}</p>}
+          {repeatStatus === "found" && repeatItems.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-slate-500">{t.repeatBasedOn(repeatItems[0].order_code, new Date(repeatItems[0].ordered_at).toLocaleDateString("en-IN"))}</p>
+              <ul className="mt-2 space-y-2">
+                {repeatItems.map((item) => {
+                  const displayLabel = item.available
+                    ? (language === "te" && item.current_name_local ? item.current_name_local : item.current_name ?? item.ordered_name)
+                    : item.ordered_name;
+                  const priceChanged = item.available && item.current_price !== null && Number(item.current_price) !== Number(item.price_paid);
+                  return (
+                    <li key={item.product_id ?? item.ordered_name} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 text-sm">
+                      <div>
+                        <p className="font-semibold">{item.qty} × {displayLabel}</p>
+                        {!item.available && <p className="text-xs font-semibold text-red-700">{t.repeatUnavailable}</p>}
+                        {priceChanged && <p className="text-xs font-semibold text-amber-700">{t.repeatPriceChanged(formatMoney(Number(item.price_paid)), formatMoney(Number(item.current_price)))}</p>}
+                      </div>
+                      <p className="font-bold">{item.available ? `₹${formatMoney(Number(item.current_price))}` : "—"}</p>
+                    </li>
+                  );
+                })}
+              </ul>
+              <button type="button" onClick={addRepeatItemsToBasket} className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-bold text-white" style={{ backgroundColor: brandColour }}>
+                {t.repeatAddAll}
+              </button>
+              {repeatAdded && <p className="mt-2 text-sm font-semibold text-emerald-700">{t.repeatAdded}</p>}
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="sticky top-0 z-10 bg-white/95 px-4 pb-3 pt-4 backdrop-blur-sm">
         <label className="sr-only" htmlFor="product-search">{t.searchPlaceholder}</label>
