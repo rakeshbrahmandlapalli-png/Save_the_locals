@@ -1,5 +1,21 @@
 # Decisions
 
+## Step 5
+
+- **Write path:** direct insert/update/delete on `customers`, `orders`,
+  `order_items`, and `order_events` is revoked from authenticated users;
+  every change goes through a security-definer RPC scoped by
+  `private.is_active_staff`, matching the pattern already used for checkout.
+- **Terminal orders are locked:** once an order is `delivered` or
+  `cancelled`, neither its status nor its items can be changed by either
+  RPC. Reversing a finalised order is a new order, not an edit.
+- **Notification path:** the new-order email is sent by a Database Webhook
+  calling an edge function, not a SQL trigger, so it can be paused or
+  redirected from the Supabase dashboard without a migration.
+- **Alert sound:** requires an explicit tap (`Enable sound`) because
+  browsers block audio before user interaction; realtime order inserts
+  still refresh the list either way.
+
 ## Step 4
 
 - **Checkout shape:** checkout stays in a focused mobile sheet so the basket remains visible and no client-side cart persistence is required yet.
