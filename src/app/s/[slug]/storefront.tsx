@@ -1,8 +1,10 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { copy, type Language } from "@/lib/copy";
 import { createPublicClient } from "@/lib/supabase";
+import { RegisterServiceWorker } from "./register-service-worker";
 import type { Category, Product, Shop } from "./page";
 
 type Quantities = Record<string, number>;
@@ -51,6 +53,7 @@ export function Storefront({
   const [orderCode, setOrderCode] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", fulfilment: "delivery", address: "", payment: "cod", notes: "" });
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [repeatPhone, setRepeatPhone] = useState("");
   const [repeatStatus, setRepeatStatus] = useState<"idle" | "loading" | "found" | "empty" | "error">("idle");
   const [repeatItems, setRepeatItems] = useState<RepeatItem[]>([]);
@@ -97,6 +100,10 @@ export function Storefront({
 
   async function submitOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!agreedToTerms) {
+      setSubmitError(t.agreeRequired);
+      return;
+    }
     setSubmitting(true);
     setSubmitError("");
     const supabase = createPublicClient();
@@ -149,6 +156,7 @@ export function Storefront({
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl bg-white pb-36 text-slate-950" data-order-source={source}>
+      <RegisterServiceWorker />
       <header className="border-b border-slate-200 px-4 pb-5 pt-6" style={{ borderTop: `5px solid ${brandColour}` }}>
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -281,6 +289,14 @@ export function Storefront({
         )}
       </section>
 
+      <footer className="mt-8 border-t border-slate-200 px-4 py-6 text-xs text-slate-500">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href="/terms" className="underline">{t.termsWord}</Link>
+          <Link href="/privacy" className="underline">{t.privacyWord}</Link>
+          <Link href="/refund-policy" className="underline">Refund &amp; cancellation policy</Link>
+        </div>
+      </footer>
+
       {itemCount > 0 && (
         <aside className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-2xl border-t border-slate-200 bg-white p-4 shadow-[0_-8px_24px_rgba(15,23,42,0.1)]">
           <div className="flex items-center justify-between gap-4">
@@ -327,6 +343,10 @@ export function Storefront({
                   {form.fulfilment === "delivery" && <Field label={t.address}><textarea required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input min-h-20" autoComplete="street-address" /></Field>}
                   <fieldset><legend className="mb-2 text-sm font-bold">{t.payment}</legend><div className="grid grid-cols-2 gap-2"><Choice label={t.cash} checked={form.payment === "cod"} onChange={() => setForm({ ...form, payment: "cod" })} /><Choice label={t.upi} checked={form.payment === "upi_on_delivery"} onChange={() => setForm({ ...form, payment: "upi_on_delivery" })} /></div></fieldset>
                   <Field label={t.notes}><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-20" /></Field>
+                  <label className="flex items-start gap-2 text-sm text-slate-700">
+                    <input type="checkbox" className="mt-0.5" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
+                    <span>{t.agreeToTermsPrefix} <Link href="/terms" target="_blank" className="font-semibold underline">{t.termsWord}</Link> &amp; <Link href="/privacy" target="_blank" className="font-semibold underline">{t.privacyWord}</Link>.</span>
+                  </label>
                   {submitError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{submitError}</p>}
                   <button disabled={submitting} className="w-full rounded-xl px-5 py-3.5 font-bold text-white disabled:opacity-60" style={{ backgroundColor: brandColour }}>{submitting ? t.placingOrder : t.placeOrder}</button>
                 </form>

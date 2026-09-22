@@ -1,5 +1,48 @@
 # Changelog
 
+## Step 7 — Installable app
+
+- Added a per-shop `manifest.webmanifest`, generated from the shop's own
+  name, brand colour, and slug — nothing hard-coded.
+- Added a generated `icon` and `apple-icon` per shop (the shop's own logo
+  if `brand.logo_url` is set, otherwise its first letter on its brand
+  colour).
+- Added a minimal service worker (`public/sw.js`) that caches the public
+  storefront page and the public catalogue reads (shops, categories,
+  products) only — orders, customers, and anything under `/owner` or
+  `/admin` are never intercepted. On the next offline visit, the last
+  successfully loaded catalogue is served from cache instead of failing.
+
+## Step 9 — Founder measurement page
+
+- Added `/admin` (platform-admin only, checked against `platform_admins`,
+  not `shop_staff`): a shop selector and a table of orders, new
+  customers, repeat customers (customers with 2+ total orders), the
+  cancellation rate, average time to confirm, and average order value,
+  all broken down by `source`.
+- Computed client-side from the shop's own orders (already readable by a
+  platform admin under RLS) rather than a new SQL function, since the
+  pilot's order volume does not need server-side aggregation.
+
+## Step 10 — QR and poster generator
+
+- Added `/s/[slug]/owner/qr`: type a source name (pamphlet, counter,
+  gate, ...), get a QR code pointing at `/s/<slug>?src=<name>`, laid out
+  for printing (a Print button, dashed cut lines, controls hidden via
+  `@media print`).
+- Added the `qrcode` package so codes render client-side from the page
+  itself — no reliance on a third-party image API for something meant to
+  be printed and trusted.
+
+## Step 11 — Legal pages and consent
+
+- Added placeholder `/privacy`, `/terms`, and `/refund-policy` pages,
+  each marked as an unreviewed draft. Per the build kit, an Indian legal
+  professional must review these before any money is charged or the
+  pilot goes beyond a small, known group.
+- Added a required consent checkbox at checkout, linking to both pages,
+  checked before `place_order` is ever called.
+
 ## Step 8 — "Same as last time"
 
 - Added a card at the top of the storefront: enter a mobile number, see

@@ -30,6 +30,8 @@ export const copy = {
     repeatPriceChanged: (was: string, now: string) => `price changed: was ₹${was}, now ₹${now}`,
     repeatAddAll: "Add these to my basket",
     repeatAdded: "Added to your basket below.",
+    agreeToTermsPrefix: "I agree to the", termsWord: "Terms", privacyWord: "Privacy Policy",
+    agreeRequired: "Please agree to the Terms and Privacy Policy to place this order.",
   },
   te: {
     searchPlaceholder: "సరుకులను వెతకండి",
@@ -62,6 +64,8 @@ export const copy = {
     repeatPriceChanged: (was: string, now: string) => `ధర మారింది: అప్పుడు ₹${was}, ఇప్పుడు ₹${now}`,
     repeatAddAll: "వీటిని నా బాస్కెట్‌కు జోడించండి",
     repeatAdded: "దిగువ మీ బాస్కెట్‌కు జోడించబడింది.",
+    agreeToTermsPrefix: "నేను అంగీకరిస్తున్నాను", termsWord: "నిబంధనలు", privacyWord: "గోప్యతా విధానం",
+    agreeRequired: "ఆర్డర్ చేయడానికి దయచేసి నిబంధనలు మరియు గోప్యతా విధానానికి అంగీకరించండి.",
   },
 } as const;
 

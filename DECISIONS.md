@@ -1,5 +1,26 @@
 # Decisions
 
+## Step 7, 9, 10, 11
+
+- **Service worker caches only public, non-sensitive reads.** It checks
+  both the request path and, for API calls, an explicit allowlist of
+  three table patterns (shops, categories, products); everything else —
+  orders, customers, owner and admin screens — passes straight through
+  uncached. Verified by code review and a local network check, not a
+  real offline test in this session (see the "not verified" note).
+- **Repeat customers, defined platform-wide.** On `/admin`, "repeat" for
+  a source means a customer with 2+ orders in total at this shop, not
+  2+ orders specifically from that source — a customer who first came
+  from a pamphlet and later reorders directly still counts as that
+  pamphlet's repeat customer, because the pamphlet is what created them.
+- **QR codes render client-side**, not via a third-party image API,
+  because this output gets printed and handed to a shop — a network
+  hiccup at print time shouldn't be able to produce a broken poster.
+- **Legal pages are explicitly marked as drafts.** The build kit is
+  explicit that a real review must happen before money changes hands;
+  the on-page warning banner is there so nobody mistakes the placeholder
+  for a reviewed policy.
+
 ## Step 8
 
 - **Phone alone, not phone + order code.** `order_status` deliberately
