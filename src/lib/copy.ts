@@ -30,6 +30,7 @@ export const copy = {
   repeatAdded: "Added to your basket below.",
   agreeToTermsPrefix: "I agree to the", termsWord: "Terms", privacyWord: "Privacy Policy",
   agreeRequired: "Please agree to the Terms and Privacy Policy to place this order.",
+  deliveredOrders: (count: string) => `${count} orders delivered`,
 } as const;
 
 export const statusCopy = {

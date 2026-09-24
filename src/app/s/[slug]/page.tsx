@@ -68,7 +68,7 @@ export default async function ShopPage({
   if (shopError) throw new Error(`Unable to load shop: ${shopError.message}`);
   if (!shop) notFound();
 
-  const [categoryResult, productResult] = await Promise.all([
+  const [categoryResult, productResult, orderCountResult] = await Promise.all([
     supabase
       .from("categories")
       .select("id,name,icon,sort")
@@ -82,6 +82,7 @@ export default async function ShopPage({
       .eq("active", true)
       .order("sort")
       .returns<Product[]>(),
+    supabase.rpc("shop_delivered_order_count", { shop_slug: slug }),
   ]);
 
   if (categoryResult.error) throw new Error(`Unable to load categories: ${categoryResult.error.message}`);
@@ -93,6 +94,7 @@ export default async function ShopPage({
       categories={categoryResult.data}
       products={productResult.data}
       initialSource={initialSource}
+      deliveredOrderCount={orderCountResult.error ? 0 : Number(orderCountResult.data ?? 0)}
     />
   );
 }

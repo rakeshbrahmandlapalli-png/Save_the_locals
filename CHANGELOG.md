@@ -1,5 +1,19 @@
 # Changelog
 
+## Sectioned browsing + real trust signal
+
+- The "All" view now groups products into category sections with
+  headers (matching how Zepto/Blinkit actually structure browsing),
+  instead of one flat undifferentiated grid. Selecting a specific
+  category or searching still shows a flat list, since sectioning
+  doesn't make sense once already filtered.
+- Added a real "X orders delivered" badge on the storefront header —
+  only shown once a shop has 5+ actually delivered orders, and only
+  counting `delivered` status, never a manufactured number. Added
+  `shop_delivered_order_count(shop_slug)`, a security-definer function
+  returning only a count (anonymous customers still cannot read the
+  orders table itself).
+
 ## More visual polish
 
 - Order status page: replaced the plain text status with a visual step

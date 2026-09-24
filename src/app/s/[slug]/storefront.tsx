@@ -33,11 +33,13 @@ export function Storefront({
   categories,
   products,
   initialSource,
+  deliveredOrderCount,
 }: {
   shop: Shop;
   categories: Category[];
   products: Product[];
   initialSource: string | null;
+  deliveredOrderCount: number;
 }) {
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>("all");
@@ -75,6 +77,25 @@ export function Storefront({
       return inCategory && searchable.includes(deferredQuery);
     });
   }, [products, categoryId, deferredQuery]);
+
+  const sections = useMemo(() => {
+    if (categoryId !== "all" || deferredQuery !== "") return null;
+    const byCategory = new Map<string, Product[]>();
+    for (const product of filteredProducts) {
+      const key = product.category_id ?? "";
+      const list = byCategory.get(key) ?? [];
+      list.push(product);
+      byCategory.set(key, list);
+    }
+    const ordered: { key: string; label: string; icon: string | null; items: Product[] }[] = [];
+    for (const category of categories) {
+      const items = byCategory.get(category.id);
+      if (items && items.length > 0) ordered.push({ key: category.id, label: category.name, icon: category.icon, items });
+    }
+    const uncategorised = byCategory.get("");
+    if (uncategorised && uncategorised.length > 0) ordered.push({ key: "uncategorised", label: "Other", icon: null, items: uncategorised });
+    return ordered.length > 1 ? ordered : null;
+  }, [categoryId, deferredQuery, filteredProducts, categories]);
 
   const itemCount = Object.values(quantities).reduce((sum, qty) => sum + qty, 0);
   const total = products.reduce((sum, product) => sum + product.price * (quantities[product.id] ?? 0), 0);
@@ -156,6 +177,11 @@ export function Storefront({
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t.deliveryArea}</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight">{shop.name}</h1>
         {shop.address && <p className="mt-2 text-sm text-slate-500">{shop.address}</p>}
+        {deliveredOrderCount >= 5 && (
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+            {t.deliveredOrders(new Intl.NumberFormat("en-IN").format(deliveredOrderCount))}
+          </p>
+        )}
       </header>
 
       <section className="px-4 pt-4">
@@ -230,54 +256,29 @@ export function Storefront({
             <p className="text-sm text-slate-600">{t.emptySearch}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {filteredProducts.map((product) => {
-              const quantity = quantities[product.id] ?? 0;
-              return (
-                <article key={product.id} className={`flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md ${!product.in_stock ? "opacity-70" : ""}`}>
-                  <div className="relative aspect-[4/3] bg-slate-100">
-                    {product.image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-slate-400" aria-hidden="true">
-                        {product.name.slice(0, 1)}
-                      </div>
-                    )}
-                    {!product.in_stock && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-                        <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">Out of stock</span>
-                      </div>
-                    )}
+          sections ? (
+            <div className="space-y-6">
+              {sections.map((section) => (
+                <div key={section.key}>
+                  <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-500">
+                    {section.icon && <CategoryIcon icon={section.icon} className="h-4 w-4" />}
+                    {section.label}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {section.items.map((product) => (
+                      <ProductCard key={product.id} product={product} quantity={quantities[product.id] ?? 0} brandColour={brandColour} t={t} onChangeQuantity={changeQuantity} />
+                    ))}
                   </div>
-                  <div className="flex flex-1 flex-col p-3">
-                    <h2 className="text-sm font-bold leading-snug">{product.name}</h2>
-                    <p className="mt-1 text-xs text-slate-500">{product.unit}</p>
-                    <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-                      <p className="text-base font-bold">₹{formatMoney(product.price)}</p>
-                      {product.in_stock && (quantity === 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => changeQuantity(product.id, 1)}
-                          className="rounded-lg border px-3 py-1.5 text-sm font-bold"
-                          style={{ borderColor: brandColour, color: brandColour }}
-                          aria-label={`${t.add} ${product.name}`}
-                        >
-                          {t.add}
-                        </button>
-                      ) : (
-                        <div className="flex items-center rounded-full border border-slate-300" aria-label={`${product.name} quantity`}>
-                          <button type="button" className="h-9 w-9 text-lg" onClick={() => changeQuantity(product.id, -1)} aria-label={`${t.removeOne} ${product.name}`}>−</button>
-                          <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{quantity}</span>
-                          <button type="button" className="h-9 w-9 text-lg" onClick={() => changeQuantity(product.id, 1)} aria-label={`${t.addOne} ${product.name}`}>+</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} quantity={quantities[product.id] ?? 0} brandColour={brandColour} t={t} onChangeQuantity={changeQuantity} />
+              ))}
+            </div>
+          )
         )}
       </section>
 
@@ -369,5 +370,57 @@ function CategoryButton({ active, onClick, label, icon }: { active: boolean; onC
       {icon && <CategoryIcon icon={icon} className="h-4 w-4" />}
       {label}
     </button>
+  );
+}
+
+function ProductCard({ product, quantity, brandColour, t, onChangeQuantity }: {
+  product: Product;
+  quantity: number;
+  brandColour: string;
+  t: typeof copy;
+  onChangeQuantity: (productId: string, delta: number) => void;
+}) {
+  return (
+    <article className={`flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md ${!product.in_stock ? "opacity-70" : ""}`}>
+      <div className="relative aspect-[4/3] bg-slate-100">
+        {product.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-slate-400" aria-hidden="true">
+            {product.name.slice(0, 1)}
+          </div>
+        )}
+        {!product.in_stock && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">Out of stock</span>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-3">
+        <h3 className="text-sm font-bold leading-snug">{product.name}</h3>
+        <p className="mt-1 text-xs text-slate-500">{product.unit}</p>
+        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+          <p className="text-base font-bold">₹{formatMoney(product.price)}</p>
+          {product.in_stock && (quantity === 0 ? (
+            <button
+              type="button"
+              onClick={() => onChangeQuantity(product.id, 1)}
+              className="rounded-lg border px-3 py-1.5 text-sm font-bold"
+              style={{ borderColor: brandColour, color: brandColour }}
+              aria-label={`${t.add} ${product.name}`}
+            >
+              {t.add}
+            </button>
+          ) : (
+            <div className="flex items-center rounded-full border border-slate-300" aria-label={`${product.name} quantity`}>
+              <button type="button" className="h-9 w-9 text-lg" onClick={() => onChangeQuantity(product.id, -1)} aria-label={`${t.removeOne} ${product.name}`}>−</button>
+              <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{quantity}</span>
+              <button type="button" className="h-9 w-9 text-lg" onClick={() => onChangeQuantity(product.id, 1)} aria-label={`${t.addOne} ${product.name}`}>+</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </article>
   );
 }
