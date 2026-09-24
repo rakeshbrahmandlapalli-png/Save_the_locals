@@ -21,7 +21,6 @@ export type Shop = {
   id: string;
   slug: string;
   name: string;
-  name_local: string | null;
   address: string | null;
   min_order: number;
   delivery_fee: number;
@@ -32,7 +31,6 @@ export type Shop = {
 export type Category = {
   id: string;
   name: string;
-  name_local: string | null;
   sort: number;
 };
 
@@ -40,7 +38,6 @@ export type Product = {
   id: string;
   category_id: string | null;
   name: string;
-  name_local: string | null;
   unit: string;
   price: number;
   image_url: string | null;
@@ -62,7 +59,7 @@ export default async function ShopPage({
 
   const { data: shop, error: shopError } = await supabase
     .from("shops")
-    .select("id,slug,name,name_local,address,min_order,delivery_fee,delivery_radius_km,brand")
+    .select("id,slug,name,address,min_order,delivery_fee,delivery_radius_km,brand")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle<Shop>();
@@ -73,13 +70,13 @@ export default async function ShopPage({
   const [categoryResult, productResult] = await Promise.all([
     supabase
       .from("categories")
-      .select("id,name,name_local,sort")
+      .select("id,name,sort")
       .eq("shop_id", shop.id)
       .order("sort")
       .returns<Category[]>(),
     supabase
       .from("products")
-      .select("id,category_id,name,name_local,unit,price,image_url,in_stock,sort")
+      .select("id,category_id,name,unit,price,image_url,in_stock,sort")
       .eq("shop_id", shop.id)
       .eq("active", true)
       .order("sort")

@@ -2,7 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { copy, type Language } from "@/lib/copy";
+import { copy } from "@/lib/copy";
 import { createPublicClient } from "@/lib/supabase";
 import { RegisterServiceWorker } from "./register-service-worker";
 import type { Category, Product, Shop } from "./page";
@@ -18,18 +18,12 @@ type RepeatItem = {
   price_paid: number;
   available: boolean;
   current_name: string | null;
-  current_name_local: string | null;
   current_unit: string | null;
   current_price: number | null;
 };
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value);
-}
-
-function displayName(item: { name: string; name_local: string | null }, language: Language) {
-  if (language === "te" && item.name_local) return item.name_local;
-  return item.name;
 }
 
 export function Storefront({
@@ -43,7 +37,6 @@ export function Storefront({
   products: Product[];
   initialSource: string | null;
 }) {
-  const [language, setLanguage] = useState<Language>("en");
   const [query, setQuery] = useState("");
   const [categoryId, setCategoryId] = useState<string>("all");
   const [quantities, setQuantities] = useState<Quantities>({});
@@ -60,7 +53,7 @@ export function Storefront({
   const [repeatError, setRepeatError] = useState("");
   const [repeatAdded, setRepeatAdded] = useState(false);
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
-  const t = copy[language];
+  const t = copy;
 
   useEffect(() => {
     const storageKey = `stl-source:${shop.slug}`;
@@ -76,7 +69,7 @@ export function Storefront({
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const inCategory = categoryId === "all" || product.category_id === categoryId;
-      const searchable = `${product.name} ${product.name_local ?? ""} ${product.unit}`.toLocaleLowerCase();
+      const searchable = `${product.name} ${product.unit}`.toLocaleLowerCase();
       return inCategory && searchable.includes(deferredQuery);
     });
   }, [products, categoryId, deferredQuery]);
@@ -158,23 +151,9 @@ export function Storefront({
     <main className="mx-auto min-h-screen max-w-2xl bg-white pb-36 text-slate-950" data-order-source={source}>
       <RegisterServiceWorker />
       <header className="border-b border-slate-200 px-4 pb-5 pt-6" style={{ borderTop: `5px solid ${brandColour}` }}>
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t.deliveryArea}</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">{displayName(shop, language)}</h1>
-            {shop.name_local && (
-              <p className="mt-1 text-sm text-slate-600">{language === "en" ? shop.name_local : shop.name}</p>
-            )}
-            {shop.address && <p className="mt-2 text-sm text-slate-500">{shop.address}</p>}
-          </div>
-          <button
-            type="button"
-            onClick={() => setLanguage((current) => (current === "en" ? "te" : "en"))}
-            className="shrink-0 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold"
-          >
-            {t.language}
-          </button>
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t.deliveryArea}</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight">{shop.name}</h1>
+        {shop.address && <p className="mt-2 text-sm text-slate-500">{shop.address}</p>}
       </header>
 
       <section className="px-4 pt-4">
@@ -195,9 +174,7 @@ export function Storefront({
               <p className="text-xs font-semibold text-slate-500">{t.repeatBasedOn(repeatItems[0].order_code, new Date(repeatItems[0].ordered_at).toLocaleDateString("en-IN"))}</p>
               <ul className="mt-2 space-y-2">
                 {repeatItems.map((item) => {
-                  const displayLabel = item.available
-                    ? (language === "te" && item.current_name_local ? item.current_name_local : item.current_name ?? item.ordered_name)
-                    : item.ordered_name;
+                  const displayLabel = item.available ? (item.current_name ?? item.ordered_name) : item.ordered_name;
                   const priceChanged = item.available && item.current_price !== null && Number(item.current_price) !== Number(item.price_paid);
                   return (
                     <li key={item.product_id ?? item.ordered_name} className="flex items-center justify-between gap-3 rounded-xl bg-white p-3 text-sm">
@@ -237,7 +214,7 @@ export function Storefront({
               key={category.id}
               active={categoryId === category.id}
               onClick={() => setCategoryId(category.id)}
-              label={displayName(category, language)}
+              label={category.name}
             />
           ))}
         </div>
@@ -251,36 +228,45 @@ export function Storefront({
             {filteredProducts.map((product) => {
               const quantity = quantities[product.id] ?? 0;
               return (
-                <article key={product.id} className="flex min-h-48 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <div className="mb-3 flex aspect-[4/3] items-center justify-center rounded-xl bg-slate-100 text-2xl font-bold text-slate-400" aria-hidden="true">
-                    {product.name.slice(0, 1)}
-                  </div>
-                  <h2 className="text-sm font-bold leading-snug">{displayName(product, language)}</h2>
-                  {product.name_local && (
-                    <p className="mt-0.5 text-xs leading-snug text-slate-500">{language === "en" ? product.name_local : product.name}</p>
-                  )}
-                  <p className="mt-1 text-xs text-slate-500">{product.unit}</p>
-                  <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-                    <p className="text-base font-bold">₹{formatMoney(product.price)}</p>
-                    {!product.in_stock ? (
-                      <span className="text-xs font-semibold text-slate-500">Out of stock</span>
-                    ) : quantity === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => changeQuantity(product.id, 1)}
-                        className="rounded-lg border px-3 py-1.5 text-sm font-bold"
-                        style={{ borderColor: brandColour, color: brandColour }}
-                        aria-label={`${t.add} ${product.name}`}
-                      >
-                        {t.add}
-                      </button>
+                <article key={product.id} className={`flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md ${!product.in_stock ? "opacity-70" : ""}`}>
+                  <div className="relative aspect-[4/3] bg-slate-100">
+                    {product.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex items-center rounded-lg border border-slate-300" aria-label={`${product.name} quantity`}>
-                        <button type="button" className="h-8 w-8 text-lg" onClick={() => changeQuantity(product.id, -1)} aria-label={`${t.removeOne} ${product.name}`}>−</button>
-                        <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{quantity}</span>
-                        <button type="button" className="h-8 w-8 text-lg" onClick={() => changeQuantity(product.id, 1)} aria-label={`${t.addOne} ${product.name}`}>+</button>
+                      <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-slate-400" aria-hidden="true">
+                        {product.name.slice(0, 1)}
                       </div>
                     )}
+                    {!product.in_stock && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+                        <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">Out of stock</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col p-3">
+                    <h2 className="text-sm font-bold leading-snug">{product.name}</h2>
+                    <p className="mt-1 text-xs text-slate-500">{product.unit}</p>
+                    <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+                      <p className="text-base font-bold">₹{formatMoney(product.price)}</p>
+                      {product.in_stock && (quantity === 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => changeQuantity(product.id, 1)}
+                          className="rounded-lg border px-3 py-1.5 text-sm font-bold"
+                          style={{ borderColor: brandColour, color: brandColour }}
+                          aria-label={`${t.add} ${product.name}`}
+                        >
+                          {t.add}
+                        </button>
+                      ) : (
+                        <div className="flex items-center rounded-full border border-slate-300" aria-label={`${product.name} quantity`}>
+                          <button type="button" className="h-9 w-9 text-lg" onClick={() => changeQuantity(product.id, -1)} aria-label={`${t.removeOne} ${product.name}`}>−</button>
+                          <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{quantity}</span>
+                          <button type="button" className="h-9 w-9 text-lg" onClick={() => changeQuantity(product.id, 1)} aria-label={`${t.addOne} ${product.name}`}>+</button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </article>
               );

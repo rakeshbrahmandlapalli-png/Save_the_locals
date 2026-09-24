@@ -4,24 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useShopStaffSession } from "@/lib/use-shop-staff-session";
 
-type Category = { id: string; name: string; name_local: string | null; sort: number };
-type Product = { id: string; category_id: string | null; name: string; name_local: string | null; unit: string; price: number; in_stock: boolean; active: boolean; sort: number };
-type CsvRow = { rowNumber: number; category: string; name: string; nameLocal: string; unit: string; price: number | null; inStock: boolean; errors: string[] };
+type Category = { id: string; name: string; sort: number };
+type Product = { id: string; category_id: string | null; name: string; unit: string; price: number; image_url: string | null; in_stock: boolean; active: boolean; sort: number };
+type CsvRow = { rowNumber: number; category: string; name: string; unit: string; price: number | null; imageUrl: string; inStock: boolean; errors: string[] };
 
 export function CatalogueConsole({ slug }: { slug: string }) {
   const { supabase, email, setEmail, password, setPassword, shop, signedIn, authorised, message, setMessage, signIn, signOut } = useShopStaffSession(slug);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryNameLocal, setNewCategoryNameLocal] = useState("");
-  const [newProduct, setNewProduct] = useState({ name: "", name_local: "", unit: "", price: "", category_id: "" });
+  const [newProduct, setNewProduct] = useState({ name: "", unit: "", price: "", category_id: "", image_url: "" });
   const [csvPreview, setCsvPreview] = useState<CsvRow[]>([]);
   const [importing, setImporting] = useState(false);
 
   const load = useCallback(async (shopId: string) => {
     const [{ data: cats, error: catError }, { data: prods, error: prodError }] = await Promise.all([
-      supabase.from("categories").select("id,name,name_local,sort").eq("shop_id", shopId).order("sort"),
-      supabase.from("products").select("id,category_id,name,name_local,unit,price,in_stock,active,sort").eq("shop_id", shopId).order("sort"),
+      supabase.from("categories").select("id,name,sort").eq("shop_id", shopId).order("sort"),
+      supabase.from("products").select("id,category_id,name,unit,price,image_url,in_stock,active,sort").eq("shop_id", shopId).order("sort"),
     ]);
     if (catError) { setMessage(catError.message); return; }
     if (prodError) { setMessage(prodError.message); return; }
@@ -38,9 +37,9 @@ export function CatalogueConsole({ slug }: { slug: string }) {
   async function addCategory(event: React.FormEvent) {
     event.preventDefault();
     if (!shop || !newCategoryName.trim()) return;
-    const { error } = await supabase.from("categories").insert({ shop_id: shop.id, name: newCategoryName.trim(), name_local: newCategoryNameLocal.trim() || null, sort: categories.length });
+    const { error } = await supabase.from("categories").insert({ shop_id: shop.id, name: newCategoryName.trim(), sort: categories.length });
     if (error) { setMessage(error.message); return; }
-    setNewCategoryName(""); setNewCategoryNameLocal("");
+    setNewCategoryName("");
     await load(shop.id);
   }
 
@@ -60,17 +59,17 @@ export function CatalogueConsole({ slug }: { slug: string }) {
       shop_id: shop.id,
       category_id: newProduct.category_id || null,
       name: newProduct.name.trim(),
-      name_local: newProduct.name_local.trim() || null,
       unit: newProduct.unit.trim(),
       price,
+      image_url: newProduct.image_url.trim() || null,
       sort: products.length,
     });
     if (error) { setMessage(error.message); return; }
-    setNewProduct({ name: "", name_local: "", unit: "", price: "", category_id: "" });
+    setNewProduct({ name: "", unit: "", price: "", category_id: "", image_url: "" });
     await load(shop.id);
   }
 
-  async function saveProduct(id: string, patch: Partial<Pick<Product, "name" | "name_local" | "unit" | "price">>) {
+  async function saveProduct(id: string, patch: Partial<Pick<Product, "name" | "unit" | "price" | "image_url">>) {
     if (!shop) return;
     const { error } = await supabase.from("products").update(patch).eq("id", id);
     if (error) { setMessage(error.message); return; }
@@ -119,9 +118,9 @@ export function CatalogueConsole({ slug }: { slug: string }) {
       shop_id: shop.id,
       category_id: byName.get(row.category.toLowerCase()) ?? null,
       name: row.name,
-      name_local: row.nameLocal || null,
       unit: row.unit,
       price: row.price,
+      image_url: row.imageUrl || null,
       in_stock: row.inStock,
       sort: products.length + i,
     })));
@@ -150,7 +149,7 @@ export function CatalogueConsole({ slug }: { slug: string }) {
 
     <section className="m-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="text-lg font-black">Import a price list</h2>
-      <p className="mt-1 text-sm text-slate-600">A CSV with columns: category, name, name_local (optional), unit, price, in_stock (optional, defaults to yes).</p>
+      <p className="mt-1 text-sm text-slate-600">A CSV with columns: category, name, unit, price, image_url (optional), in_stock (optional, defaults to yes).</p>
       <input type="file" accept=".csv" onChange={(e) => void handleFile(e)} className="mt-3 block text-sm" />
       {csvPreview.length > 0 && <div className="mt-4">
         <p className="text-sm font-semibold">{validCount} of {csvPreview.length} rows are valid.</p>
@@ -172,10 +171,9 @@ export function CatalogueConsole({ slug }: { slug: string }) {
 
     <section className="m-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="text-lg font-black">Categories</h2>
-      <div className="mt-3 flex flex-wrap gap-2">{categories.map((category) => <span key={category.id} className="flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1 text-sm">{category.name}{category.name_local ? ` · ${category.name_local}` : ""}<button onClick={() => void deleteCategory(category.id)} className="font-bold text-red-600">×</button></span>)}</div>
+      <div className="mt-3 flex flex-wrap gap-2">{categories.map((category) => <span key={category.id} className="flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1 text-sm">{category.name}<button onClick={() => void deleteCategory(category.id)} className="font-bold text-red-600">×</button></span>)}</div>
       <form onSubmit={addCategory} className="mt-4 flex flex-wrap gap-2">
         <input className="input flex-1" placeholder="Category name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
-        <input className="input flex-1" placeholder="Telugu name (optional)" value={newCategoryNameLocal} onChange={(e) => setNewCategoryNameLocal(e.target.value)} />
         <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white">Add category</button>
       </form>
     </section>
@@ -184,9 +182,9 @@ export function CatalogueConsole({ slug }: { slug: string }) {
       <h2 className="text-lg font-black">Add a product</h2>
       <form onSubmit={addProduct} className="mt-3 grid grid-cols-2 gap-2">
         <input className="input col-span-2" placeholder="Name" value={newProduct.name} onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })} />
-        <input className="input col-span-2" placeholder="Telugu name (optional)" value={newProduct.name_local} onChange={(e) => setNewProduct({ ...newProduct, name_local: e.target.value })} />
         <input className="input" placeholder="Unit, e.g. 1 kg" value={newProduct.unit} onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })} />
         <input className="input" placeholder="Price ₹" inputMode="decimal" value={newProduct.price} onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })} />
+        <input className="input col-span-2" placeholder="Photo URL (optional)" value={newProduct.image_url} onChange={(e) => setNewProduct({ ...newProduct, image_url: e.target.value })} />
         <select className="input col-span-2" value={newProduct.category_id} onChange={(e) => setNewProduct({ ...newProduct, category_id: e.target.value })}>
           <option value="">No category</option>
           {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
@@ -196,7 +194,7 @@ export function CatalogueConsole({ slug }: { slug: string }) {
     </section>
 
     <section className="m-4 space-y-3">
-      {[...categories, { id: "", name: "Uncategorised", name_local: null, sort: 999999 }].map((category) => {
+      {[...categories, { id: "", name: "Uncategorised", sort: 999999 }].map((category) => {
         const items = products.filter((product) => (product.category_id ?? "") === category.id);
         if (items.length === 0) return null;
         return <div key={category.id || "uncategorised"} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -210,22 +208,34 @@ export function CatalogueConsole({ slug }: { slug: string }) {
 
 function ProductRow({ product, onSave, onToggle, onDelete }: {
   product: Product;
-  onSave: (id: string, patch: Partial<Pick<Product, "name" | "name_local" | "unit" | "price">>) => Promise<void>;
+  onSave: (id: string, patch: Partial<Pick<Product, "name" | "unit" | "price" | "image_url">>) => Promise<void>;
   onToggle: (product: Product, field: "in_stock" | "active") => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }) {
   const [price, setPrice] = useState(String(product.price));
-  const dirty = Number(price) !== product.price;
+  const [imageUrl, setImageUrl] = useState(product.image_url ?? "");
+  const priceDirty = Number(price) !== product.price;
+  const imageDirty = imageUrl.trim() !== (product.image_url ?? "");
 
   return <div className="flex flex-wrap items-center gap-3 py-3">
+    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+      {product.image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+      )}
+    </div>
     <div className="min-w-[10rem] flex-1">
-      <p className="font-semibold">{product.name}{product.name_local ? ` · ${product.name_local}` : ""}</p>
+      <p className="font-semibold">{product.name}</p>
       <p className="text-xs text-slate-500">{product.unit}</p>
     </div>
     <div className="flex items-center gap-1">
       <span className="text-sm text-slate-500">₹</span>
       <input className="input w-24" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
-      {dirty && <button onClick={() => { const value = Number(price); if (!Number.isNaN(value) && value >= 0) void onSave(product.id, { price: value }); }} className="rounded-md bg-slate-900 px-2 py-1 text-xs font-bold text-white">Save</button>}
+      {priceDirty && <button onClick={() => { const value = Number(price); if (!Number.isNaN(value) && value >= 0) void onSave(product.id, { price: value }); }} className="rounded-md bg-slate-900 px-2 py-1 text-xs font-bold text-white">Save</button>}
+    </div>
+    <div className="flex items-center gap-1">
+      <input className="input w-40" placeholder="Photo URL" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+      {imageDirty && <button onClick={() => void onSave(product.id, { image_url: imageUrl.trim() || null })} className="rounded-md bg-slate-900 px-2 py-1 text-xs font-bold text-white">Save</button>}
     </div>
     <button onClick={() => void onToggle(product, "in_stock")} className={`rounded-md border px-2 py-1 text-xs font-bold ${product.in_stock ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 text-slate-500"}`}>{product.in_stock ? "In stock" : "Out of stock"}</button>
     <button onClick={() => void onToggle(product, "active")} className={`rounded-md border px-2 py-1 text-xs font-bold ${product.active ? "border-slate-300 text-slate-600" : "border-red-300 bg-red-50 text-red-700"}`}>{product.active ? "Visible" : "Hidden"}</button>
@@ -261,16 +271,16 @@ function buildCsvPreview(rows: string[][]): CsvRow[] {
   const columnIndex = (label: string) => header.findIndex((cell) => cell.trim().toLowerCase() === label);
   const categoryIdx = columnIndex("category");
   const nameIdx = columnIndex("name");
-  const nameLocalIdx = columnIndex("name_local");
   const unitIdx = columnIndex("unit");
   const priceIdx = columnIndex("price");
+  const imageUrlIdx = columnIndex("image_url");
   const inStockIdx = columnIndex("in_stock");
   return body.map((cells, i) => {
     const category = (cells[categoryIdx] ?? "").trim();
     const name = (cells[nameIdx] ?? "").trim();
-    const nameLocal = nameLocalIdx >= 0 ? (cells[nameLocalIdx] ?? "").trim() : "";
     const unit = (cells[unitIdx] ?? "").trim();
     const priceRaw = (cells[priceIdx] ?? "").trim();
+    const imageUrl = imageUrlIdx >= 0 ? (cells[imageUrlIdx] ?? "").trim() : "";
     const inStockRaw = inStockIdx >= 0 ? (cells[inStockIdx] ?? "").trim().toLowerCase() : "";
     const price = priceRaw === "" ? NaN : Number(priceRaw);
     const errors: string[] = [];
@@ -279,8 +289,9 @@ function buildCsvPreview(rows: string[][]): CsvRow[] {
     if (unitIdx < 0 || !unit) errors.push("missing unit");
     if (priceIdx < 0 || Number.isNaN(price) || price < 0) errors.push("bad price");
     return {
-      rowNumber: i + 2, category, name, nameLocal, unit,
+      rowNumber: i + 2, category, name, unit,
       price: Number.isNaN(price) ? null : price,
+      imageUrl,
       inStock: !["false", "no", "0"].includes(inStockRaw),
       errors,
     };

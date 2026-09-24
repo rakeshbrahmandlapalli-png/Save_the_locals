@@ -1,5 +1,19 @@
 # Changelog
 
+## Design pass — product photos, card polish, English only
+
+- Wired up `image_url`, which existed in the schema but was never
+  rendered: the storefront now shows a real photo when a product has
+  one, and the catalogue screen has a photo URL field (plus optional
+  `image_url` CSV column) to set it.
+- Product cards: taller image area, rounded corners, a proper "out of
+  stock" overlay with the whole card dimmed, larger touch targets on
+  the quantity stepper.
+- Removed the English/Telugu bilingual toggle and all `name_local`
+  reads/writes across the storefront, checkout, and catalogue tools —
+  English only, on request. The database columns are untouched, so
+  bilingual can come back later without a migration.
+
 ## Step 7 — Installable app
 
 - Added a per-shop `manifest.webmanifest`, generated from the shop's own
