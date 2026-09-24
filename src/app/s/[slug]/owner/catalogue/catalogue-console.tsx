@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useShopStaffSession } from "@/lib/use-shop-staff-session";
+import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "@/lib/category-icons";
 
-type Category = { id: string; name: string; sort: number };
+type Category = { id: string; name: string; icon: string | null; sort: number };
 type Product = { id: string; category_id: string | null; name: string; unit: string; price: number; image_url: string | null; in_stock: boolean; active: boolean; sort: number };
 type CsvRow = { rowNumber: number; category: string; name: string; unit: string; price: number | null; imageUrl: string; inStock: boolean; errors: string[] };
 
@@ -13,13 +14,14 @@ export function CatalogueConsole({ slug }: { slug: string }) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryIcon, setNewCategoryIcon] = useState("general");
   const [newProduct, setNewProduct] = useState({ name: "", unit: "", price: "", category_id: "", image_url: "" });
   const [csvPreview, setCsvPreview] = useState<CsvRow[]>([]);
   const [importing, setImporting] = useState(false);
 
   const load = useCallback(async (shopId: string) => {
     const [{ data: cats, error: catError }, { data: prods, error: prodError }] = await Promise.all([
-      supabase.from("categories").select("id,name,sort").eq("shop_id", shopId).order("sort"),
+      supabase.from("categories").select("id,name,icon,sort").eq("shop_id", shopId).order("sort"),
       supabase.from("products").select("id,category_id,name,unit,price,image_url,in_stock,active,sort").eq("shop_id", shopId).order("sort"),
     ]);
     if (catError) { setMessage(catError.message); return; }
@@ -37,9 +39,16 @@ export function CatalogueConsole({ slug }: { slug: string }) {
   async function addCategory(event: React.FormEvent) {
     event.preventDefault();
     if (!shop || !newCategoryName.trim()) return;
-    const { error } = await supabase.from("categories").insert({ shop_id: shop.id, name: newCategoryName.trim(), sort: categories.length });
+    const { error } = await supabase.from("categories").insert({ shop_id: shop.id, name: newCategoryName.trim(), icon: newCategoryIcon, sort: categories.length });
     if (error) { setMessage(error.message); return; }
-    setNewCategoryName("");
+    setNewCategoryName(""); setNewCategoryIcon("general");
+    await load(shop.id);
+  }
+
+  async function setCategoryIcon(id: string, icon: string) {
+    if (!shop) return;
+    const { error } = await supabase.from("categories").update({ icon }).eq("id", id);
+    if (error) { setMessage(error.message); return; }
     await load(shop.id);
   }
 
@@ -171,9 +180,21 @@ export function CatalogueConsole({ slug }: { slug: string }) {
 
     <section className="m-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="text-lg font-black">Categories</h2>
-      <div className="mt-3 flex flex-wrap gap-2">{categories.map((category) => <span key={category.id} className="flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1 text-sm">{category.name}<button onClick={() => void deleteCategory(category.id)} className="font-bold text-red-600">×</button></span>)}</div>
+      <div className="mt-3 space-y-2">{categories.map((category) => (
+        <div key={category.id} className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2">
+          <CategoryIcon icon={category.icon} className="h-5 w-5 shrink-0 text-slate-500" />
+          <span className="flex-1 text-sm font-semibold">{category.name}</span>
+          <select className="input w-auto py-1 text-xs" value={category.icon ?? "general"} onChange={(e) => void setCategoryIcon(category.id, e.target.value)}>
+            {CATEGORY_ICON_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+          </select>
+          <button onClick={() => void deleteCategory(category.id)} className="text-xs font-bold text-red-600">Delete</button>
+        </div>
+      ))}</div>
       <form onSubmit={addCategory} className="mt-4 flex flex-wrap gap-2">
         <input className="input flex-1" placeholder="Category name" value={newCategoryName} onChange={(e) => setNewCategoryName(e.target.value)} />
+        <select className="input w-auto" value={newCategoryIcon} onChange={(e) => setNewCategoryIcon(e.target.value)}>
+          {CATEGORY_ICON_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+        </select>
         <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white">Add category</button>
       </form>
     </section>
@@ -194,11 +215,11 @@ export function CatalogueConsole({ slug }: { slug: string }) {
     </section>
 
     <section className="m-4 space-y-3">
-      {[...categories, { id: "", name: "Uncategorised", sort: 999999 }].map((category) => {
+      {[...categories, { id: "", name: "Uncategorised", icon: null, sort: 999999 }].map((category) => {
         const items = products.filter((product) => (product.category_id ?? "") === category.id);
         if (items.length === 0) return null;
         return <div key={category.id || "uncategorised"} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-black uppercase tracking-wide text-slate-500">{category.name}</h3>
+          <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-500"><CategoryIcon icon={category.icon} className="h-4 w-4" />{category.name}</h3>
           <div className="mt-3 divide-y">{items.map((product) => <ProductRow key={product.id} product={product} onSave={saveProduct} onToggle={toggleProduct} onDelete={deleteProduct} />)}</div>
         </div>;
       })}

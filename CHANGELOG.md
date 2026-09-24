@@ -1,5 +1,13 @@
 # Changelog
 
+## Category icons
+
+- Added a fixed set of 15 line icons (via `lucide-react`) an owner picks
+  from per category — never guessed from the category's name text, and
+  never per-shop code. Shown on the storefront's category chips and in
+  the catalogue screen.
+- Added migration `007_category_icons.sql` (`categories.icon`).
+
 ## Design pass — product photos, card polish, English only
 
 - Wired up `image_url`, which existed in the schema but was never

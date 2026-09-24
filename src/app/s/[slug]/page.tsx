@@ -31,6 +31,7 @@ export type Shop = {
 export type Category = {
   id: string;
   name: string;
+  icon: string | null;
   sort: number;
 };
 
@@ -70,7 +71,7 @@ export default async function ShopPage({
   const [categoryResult, productResult] = await Promise.all([
     supabase
       .from("categories")
-      .select("id,name,sort")
+      .select("id,name,icon,sort")
       .eq("shop_id", shop.id)
       .order("sort")
       .returns<Category[]>(),

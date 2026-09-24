@@ -3,6 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { copy } from "@/lib/copy";
+import { CategoryIcon } from "@/lib/category-icons";
 import { createPublicClient } from "@/lib/supabase";
 import { RegisterServiceWorker } from "./register-service-worker";
 import type { Category, Product, Shop } from "./page";
@@ -208,13 +209,14 @@ export function Storefront({
           className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
         />
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Product categories">
-          <CategoryButton active={categoryId === "all"} onClick={() => setCategoryId("all")} label={t.allCategories} />
+          <CategoryButton active={categoryId === "all"} onClick={() => setCategoryId("all")} label={t.allCategories} icon={null} />
           {categories.map((category) => (
             <CategoryButton
               key={category.id}
               active={categoryId === category.id}
               onClick={() => setCategoryId(category.id)}
               label={category.name}
+              icon={category.icon}
             />
           ))}
         </div>
@@ -353,13 +355,14 @@ function Choice({ label, checked, onChange }: { label: string; checked: boolean;
   return <label className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-semibold ${checked ? "border-slate-900 bg-slate-50" : "border-slate-300"}`}><input type="radio" checked={checked} onChange={onChange} />{label}</label>;
 }
 
-function CategoryButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+function CategoryButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: string | null }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700"}`}
+      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700"}`}
     >
+      {icon && <CategoryIcon icon={icon} className="h-4 w-4" />}
       {label}
     </button>
   );
