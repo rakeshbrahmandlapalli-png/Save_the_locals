@@ -1,5 +1,18 @@
 # Changelog
 
+## More visual polish
+
+- Order status page: replaced the plain text status with a visual step
+  tracker (placed → confirmed → out for delivery → delivered), with a
+  distinct look for a cancelled order.
+- Empty search results now show an icon, not just text.
+- The sticky basket bar animates in instead of appearing abruptly.
+- Added `supabase/placeholder-product-photos.sql` — a one-off script (not
+  a migration) that sets `image_url` on the 20 placeholder-shop demo
+  products using freely-licensed Unsplash photos, so the demo actually
+  shows pictures instead of letter placeholders. Real shops set their
+  own photos via the Catalogue screen or CSV import.
+
 ## Category icons
 
 - Added a fixed set of 15 line icons (via `lucide-react`) an owner picks

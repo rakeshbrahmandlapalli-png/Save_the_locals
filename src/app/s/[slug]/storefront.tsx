@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { copy } from "@/lib/copy";
 import { CategoryIcon } from "@/lib/category-icons";
+import { SearchX } from "lucide-react";
 import { createPublicClient } from "@/lib/supabase";
 import { RegisterServiceWorker } from "./register-service-worker";
 import type { Category, Product, Shop } from "./page";
@@ -224,7 +225,10 @@ export function Storefront({
 
       <section className="px-4 pt-2">
         {filteredProducts.length === 0 ? (
-          <p className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">{t.emptySearch}</p>
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-10 text-center">
+            <SearchX className="h-6 w-6 text-slate-400" aria-hidden="true" />
+            <p className="text-sm text-slate-600">{t.emptySearch}</p>
+          </div>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {filteredProducts.map((product) => {
@@ -286,7 +290,7 @@ export function Storefront({
       </footer>
 
       {itemCount > 0 && (
-        <aside className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-2xl border-t border-slate-200 bg-white p-4 shadow-[0_-8px_24px_rgba(15,23,42,0.1)]">
+        <aside className="animate-slide-up fixed inset-x-0 bottom-0 z-20 mx-auto max-w-2xl border-t border-slate-200 bg-white p-4 shadow-[0_-8px_24px_rgba(15,23,42,0.1)]">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-semibold">{itemCount} {itemCount === 1 ? t.item : t.items}</p>
