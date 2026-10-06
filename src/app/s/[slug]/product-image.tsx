@@ -1,23 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { Package } from "lucide-react";
+import { CategoryIcon } from "@/lib/category-icons";
+import type { Accent } from "@/lib/collections";
 
 /**
- * Product photo on a light neutral tile. Falls back to a neutral placeholder when there is no
- * image or it fails to load, so a broken URL never leaves an empty box or alt text showing.
+ * Product photo in a fixed-ratio tile. Cropped pack shots (local /products/ assets) are contained so
+ * packaging is never clipped; photos fill the tile. When there is no accurate photo, or it fails to
+ * load, the tile shows the aisle's icon on its accent tint: one consistent, deliberate fallback.
  */
-export function ProductImage({ src, alt, className = "", iconClassName = "h-8 w-8" }: { src: string | null; alt: string; className?: string; iconClassName?: string }) {
+export function ProductImage({
+  src,
+  alt,
+  accent = "sage",
+  icon = null,
+  className = "",
+  iconClassName = "h-9 w-9",
+}: {
+  src: string | null;
+  alt: string;
+  accent?: Accent;
+  icon?: string | null;
+  className?: string;
+  iconClassName?: string;
+}) {
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(src) && !failed;
+  const packShot = Boolean(src?.startsWith("/products/"));
   return (
-    <div className={`relative overflow-hidden bg-[#f1efe9] ${className}`}>
+    <div className={`accent-${accent} relative overflow-hidden ${showImage ? "bg-[var(--tile)]" : "bg-accent-tint"} ${className}`}>
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src as string} alt={alt} loading="lazy" onError={() => setFailed(true)} className="h-full w-full object-cover" />
+        <img
+          src={src as string}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className={`h-full w-full ${packShot ? "object-contain" : "object-cover"}`}
+        />
       ) : (
-        <div role="img" aria-label={alt} className="flex h-full w-full items-center justify-center text-stone-400">
-          <Package className={iconClassName} aria-hidden="true" />
+        <div role="img" aria-label={alt} className="text-accent flex h-full w-full items-center justify-center">
+          <CategoryIcon icon={icon} className={`${iconClassName} opacity-80 [stroke-width:1.5]`} />
         </div>
       )}
     </div>
