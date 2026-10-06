@@ -48,14 +48,18 @@ body {
   }
 }
 
-button,
-input {
-  font: inherit;
-}
+/* In the base layer so Tailwind text-size/weight utilities on buttons and inputs still win. */
+@layer base {
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
 
-button {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  button {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 button:active:not(:disabled) {

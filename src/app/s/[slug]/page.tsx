@@ -22,6 +22,7 @@ export type Shop = {
   slug: string;
   name: string;
   address: string | null;
+  phone: string | null;
   min_order: number;
   delivery_fee: number;
   delivery_radius_km: number;
@@ -60,7 +61,7 @@ export default async function ShopPage({
 
   const { data: shop, error: shopError } = await supabase
     .from("shops")
-    .select("id,slug,name,address,min_order,delivery_fee,delivery_radius_km,brand")
+    .select("id,slug,name,address,phone,min_order,delivery_fee,delivery_radius_km,brand")
     .eq("slug", slug)
     .eq("active", true)
     .maybeSingle<Shop>();

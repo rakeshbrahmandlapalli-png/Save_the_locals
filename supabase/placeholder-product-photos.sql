@@ -2,6 +2,8 @@
 -- placeholder shop's demo products using freely-licensed Unsplash photos.
 -- Five products (rice, toor dal, wheat flour, sunflower oil, toned milk) use
 -- demo images shipped in public/products/ instead of Unsplash.
+-- Curd, Salted Biscuits and Laundry Detergent are intentionally left without a photo:
+-- the stock photos did not match the products (the app shows a neutral placeholder).
 -- Safe to paste into the SQL Editor once; running it again just re-sets
 -- the same URLs. Real shops should use their own photos via the
 -- Catalogue screen or CSV import instead.
@@ -13,11 +15,8 @@ photos (name, image_url) as (
   values
     ('Sona Masoori Rice', '/products/sona-masoori-rice.jpg'),
     ('Toned Milk', '/products/toned-milk.jpg'),
-    ('Salted Biscuits', 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Dishwash Bar', 'https://images.unsplash.com/photo-1607006344152-62699f97b42c?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Toor Dal', '/products/toor-dal.jpg'),
-    ('Laundry Detergent', 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=400&h=400&fit=crop&auto=format&q=80'),
-    ('Curd', 'https://images.unsplash.com/photo-1627308594190-a057cd4bfac8?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Potato Chips', 'https://images.unsplash.com/photo-1613919113640-25732ec5e61f?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Floor Cleaner', 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Butter', 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&h=400&fit=crop&auto=format&q=80'),
