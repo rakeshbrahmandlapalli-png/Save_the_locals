@@ -49,6 +49,10 @@ export default function OrderStatusPage() {
   const [loading, setLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(true);
   const [shop, setShop] = useState<ShopInfo | null>(null);
+  const [helpCategory, setHelpCategory] = useState("order_help");
+  const [helpText, setHelpText] = useState("");
+  const [helpMessage, setHelpMessage] = useState("");
+  const [helpBusy, setHelpBusy] = useState(false);
 
   // Shop name, phone and brand colour are public (the storefront reads them too).
   useEffect(() => {
@@ -90,6 +94,17 @@ export default function OrderStatusPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function requestHelp(event: React.FormEvent) {
+    event.preventDefault(); setHelpBusy(true); setHelpMessage("");
+    const { error } = await createPublicClient().rpc("submit_order_support", {
+      shop_slug: slug, order_code: code.trim(), customer_phone: phone,
+      request_category: helpCategory, request_message: helpText.trim(),
+    });
+    setHelpBusy(false);
+    if (error) setHelpMessage(error.message);
+    else { setHelpMessage("Request sent. The shop can review it with your order."); setHelpText(""); }
   }
 
   const brandColour = storefrontColour(shop?.name ?? "", shop?.brand?.primary_colour);
@@ -171,6 +186,27 @@ export default function OrderStatusPage() {
             </button>
           </form>
         )}
+
+        {result && !formOpen && <section className="surface mt-4 p-4">
+          <h2 className="text-base font-bold">Need help with this order?</h2>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">Send a request to the shop or call them using the button above.</p>
+          <form onSubmit={requestHelp} className="mt-4 space-y-3">
+            <label className="block text-sm font-semibold">What do you need?
+              <select className="input mt-1" value={helpCategory} onChange={(event) => setHelpCategory(event.target.value)}>
+                <option value="order_help">Help with my order</option>
+                {result.status !== "delivered" && result.status !== "cancelled" && <option value="cancel_request">Request cancellation</option>}
+                <option value="refund_help">Payment or refund question</option>
+                <option value="other">Something else</option>
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">Message
+              <textarea className="input mt-1 min-h-24" minLength={10} maxLength={1000} required value={helpText} onChange={(event) => setHelpText(event.target.value)} placeholder="Tell the shop what happened" />
+            </label>
+            <button disabled={helpBusy} className="btn-primary w-full">{helpBusy ? "Sending…" : "Send request"}</button>
+            {helpMessage && <p role="status" className="text-sm font-semibold">{helpMessage}</p>}
+          </form>
+          <p className="mt-2 text-xs text-[var(--ink-soft)]">A cancellation request does not cancel the order until the shop confirms it.</p>
+        </section>}
 
         {message && <p role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">{message}</p>}
 

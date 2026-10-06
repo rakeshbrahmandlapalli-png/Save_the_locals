@@ -18,6 +18,8 @@ export function useShopStaffSession(slug: string) {
     const { data: { session } } = await supabase.auth.getSession();
     setSignedIn(Boolean(session));
     if (!session) { setAuthorised(null); return; }
+    // A verified owner claims a pending invitation with the same email on first sign-in.
+    await supabase.rpc("claim_shop_owner_invitation");
     const { data: foundShop } = await supabase.from("shops").select("id,name,phone").eq("slug", slug).single();
     if (!foundShop) { setMessage("Shop not found."); return; }
     const { data: membership } = await supabase.from("shop_staff").select("role").eq("shop_id", foundShop.id).maybeSingle();
@@ -42,5 +44,13 @@ export function useShopStaffSession(slug: string) {
     await initialise();
   }
 
-  return { supabase, email, setEmail, password, setPassword, shop, signedIn, authorised, message, setMessage, signIn, signOut, initialise };
+  async function register(event: React.FormEvent) {
+    event.preventDefault(); setMessage("");
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) { setMessage(error.message); return; }
+    setMessage(data.session ? "Account created. Checking shop access…" : "Check your email to verify your account, then sign in here.");
+    if (data.session) await initialise();
+  }
+
+  return { supabase, email, setEmail, password, setPassword, shop, signedIn, authorised, message, setMessage, signIn, signOut, register, initialise };
 }

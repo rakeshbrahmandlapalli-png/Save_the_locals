@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePlatformAdminSession } from "@/lib/use-platform-admin-session";
+import Link from "next/link";
+import { ShopOnboarding } from "./shop-onboarding";
+import { BusinessOperations } from "./business-operations";
 
-type Shop = { id: string; name: string; slug: string };
-type OrderRow = { id: string; source: string; is_new_customer: boolean; status: string; total: number; created_at: string; confirmed_at: string | null; customer_id: string };
+type Shop = { id: string; name: string; slug: string; owner_email: string | null; active: boolean };
+type OrderRow = { id: string; code: string; subtotal: number; cancellation_reason: string | null; source: string; is_new_customer: boolean; status: string; total: number; created_at: string; confirmed_at: string | null; customer_id: string };
 type SourceStats = {
   source: string;
   orders: number;
@@ -54,7 +57,7 @@ export function AdminConsole() {
   const [loading, setLoading] = useState(false);
 
   const loadShops = useCallback(async () => {
-    const { data, error } = await supabase.from("shops").select("id,name,slug").order("name");
+    const { data, error } = await supabase.from("shops").select("id,name,slug,owner_email,active").order("name");
     if (error) { setMessage(error.message); return; }
     setShops(data ?? []);
     if (!shopId && data && data.length > 0) setShopId(data[0].id);
@@ -68,17 +71,17 @@ export function AdminConsole() {
 
   const loadOrders = useCallback(async (id: string) => {
     setLoading(true);
-    const { data, error } = await supabase.from("orders").select("id,source,is_new_customer,status,total,created_at,confirmed_at,customer_id").eq("shop_id", id);
+    const { data, error } = await supabase.from("orders").select("id,code,subtotal,cancellation_reason,source,is_new_customer,status,total,created_at,confirmed_at,customer_id").eq("shop_id", id).order("created_at", { ascending: false });
     setLoading(false);
     if (error) { setMessage(error.message); return; }
     setOrders((data ?? []) as OrderRow[]);
   }, [setMessage, supabase]);
 
   useEffect(() => {
-    if (!shopId) return;
+    if (!shopId || !authorised) return;
     const task = window.setTimeout(() => void loadOrders(shopId), 0);
     return () => window.clearTimeout(task);
-  }, [shopId, loadOrders]);
+  }, [authorised, shopId, loadOrders]);
 
   if (!signedIn) return <main className="mx-auto min-h-screen max-w-md px-4 py-12"><p className="text-sm font-semibold text-slate-500">Founder dashboard</p><h1 className="mt-2 text-3xl font-bold">Sign in</h1><form onSubmit={signIn} className="mt-8 space-y-4"><label className="block"><span className="mb-2 block text-sm font-bold">Email</span><input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label><label className="block"><span className="mb-2 block text-sm font-bold">Password</span><input className="input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} /></label>{message && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{message}</p>}<button className="w-full rounded-xl bg-slate-900 px-4 py-3 font-bold text-white">Sign in</button></form></main>;
   if (authorised === false) return <main className="mx-auto max-w-lg px-4 py-16"><h1 className="text-2xl font-bold">Access denied</h1><p className="mt-2 text-slate-600">This account is not a platform admin.</p><button onClick={() => void signOut()} className="mt-6 rounded-lg border px-4 py-2 font-semibold">Sign out</button></main>;
@@ -95,17 +98,39 @@ export function AdminConsole() {
   return <main className="mx-auto min-h-screen max-w-4xl bg-slate-50 pb-16 text-slate-950">
     <header className="border-b bg-white px-4 py-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Founder dashboard</p>
-      <h1 className="mt-1 text-xl font-bold">Pilot measurement</h1>
+      <div className="flex items-center justify-between gap-3"><h1 className="mt-1 text-xl font-bold">Nextdoor Basket · Business</h1><button onClick={() => void signOut()} className="rounded-lg border px-3 py-2 text-sm">Sign out</button></div>
       <select className="input mt-3" value={shopId} onChange={(e) => setShopId(e.target.value)}>
-        {shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}</option>)}
+        <option value="" disabled>Select a shop</option>
+        {shops.map((shop) => <option key={shop.id} value={shop.id}>{shop.name}{shop.active ? "" : " · Inactive"}</option>)}
       </select>
     </header>
+
+    <ShopOnboarding onCreated={loadShops} />
 
     {message && <p className="m-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{message}</p>}
     {loading && <p className="m-4 text-sm text-slate-600">Loading…</p>}
 
     {!loading && selectedShop && (
       <>
+        <BusinessOperations shop={selectedShop} onShopChanged={loadShops} onOrdersChanged={() => loadOrders(selectedShop.id)} />
+        <section className="m-4 rounded-2xl border bg-white p-5">
+          <h2 className="font-bold">Shop setup & customer help</h2>
+          <p className="mt-2 text-sm text-slate-600">{selectedShop.active ? "Storefront is active." : "Shop is inactive. Set up owner access and its catalogue before launch."}</p>
+          <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
+            <Link className="rounded-lg border px-3 py-2" href={`/s/${selectedShop.slug}/owner`}>Shop orders</Link>
+            <Link className="rounded-lg border px-3 py-2" href={`/s/${selectedShop.slug}/owner/catalogue`}>Catalogue</Link>
+            <Link className="rounded-lg border px-3 py-2" href={`/s/${selectedShop.slug}/status`}>Customer order lookup</Link>
+            {selectedShop.active && <Link className="rounded-lg border px-3 py-2" href={`/s/${selectedShop.slug}`}>Storefront</Link>}
+          </div>
+          <p className="mt-3 text-sm text-slate-600">Use the owner invitation above to assign access to the verified shop account.</p>
+        </section>
+
+        <section className="m-4 rounded-2xl border bg-white p-5">
+          <h2 className="font-bold">Cancellation review</h2>
+          <p className="mt-1 text-sm text-slate-600">Cancelled orders are excluded from commission. Refunds still require a separate review.</p>
+          <ul className="mt-3 divide-y">{orders.filter((order) => order.status === "cancelled").map((order) => <li key={order.id} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="font-semibold">#{order.code}</span><span>{new Date(order.created_at).toLocaleDateString("en-IN")}</span><span>₹{Number(order.total).toLocaleString("en-IN")}</span><span>{order.cancellation_reason ?? "Reason unavailable (older order)"}</span></li>)}</ul>
+          {!orders.some((order) => order.status === "cancelled") && <p className="mt-3 text-sm text-slate-500">No cancelled orders for this shop.</p>}
+        </section>
         <section className="m-4 grid grid-cols-3 gap-3">
           <Tile label="Total orders" value={String(totals.orders)} />
           <Tile label="New customers" value={String(totals.newCustomers)} />
