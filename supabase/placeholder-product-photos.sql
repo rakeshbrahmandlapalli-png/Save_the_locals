@@ -1,5 +1,7 @@
 -- Not a migration — a one-off convenience script to set image_url on the
 -- placeholder shop's demo products using freely-licensed Unsplash photos.
+-- Five products (rice, toor dal, wheat flour, sunflower oil, toned milk) use
+-- demo images shipped in public/products/ instead of Unsplash.
 -- Safe to paste into the SQL Editor once; running it again just re-sets
 -- the same URLs. Real shops should use their own photos via the
 -- Catalogue screen or CSV import instead.
@@ -9,19 +11,19 @@ with target as (
 ),
 photos (name, image_url) as (
   values
-    ('Sona Masoori Rice', 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&h=400&fit=crop&auto=format&q=80'),
-    ('Toned Milk', 'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&h=400&fit=crop&auto=format&q=80'),
+    ('Sona Masoori Rice', '/products/sona-masoori-rice.jpg'),
+    ('Toned Milk', '/products/toned-milk.jpg'),
     ('Salted Biscuits', 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Dishwash Bar', 'https://images.unsplash.com/photo-1607006344152-62699f97b42c?w=400&h=400&fit=crop&auto=format&q=80'),
-    ('Toor Dal', 'https://images.unsplash.com/photo-1612257416648-ee7a6c533b4f?w=400&h=400&fit=crop&auto=format&q=80'),
+    ('Toor Dal', '/products/toor-dal.jpg'),
     ('Laundry Detergent', 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Curd', 'https://images.unsplash.com/photo-1627308594190-a057cd4bfac8?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Potato Chips', 'https://images.unsplash.com/photo-1613919113640-25732ec5e61f?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Floor Cleaner', 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Butter', 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Mixture', 'https://images.unsplash.com/photo-1675081678327-25a9b6448977?w=400&h=400&fit=crop&auto=format&q=80'),
-    ('Sunflower Oil', 'https://images.unsplash.com/photo-1552592074-ea7a91b851b3?w=400&h=400&fit=crop&auto=format&q=80'),
-    ('Wheat Flour', 'https://images.unsplash.com/photo-1627485937980-221c88ac04f9?w=400&h=400&fit=crop&auto=format&q=80'),
+    ('Sunflower Oil', '/products/sunflower-oil.jpg'),
+    ('Wheat Flour', '/products/wheat-flour.jpg'),
     ('Paneer', 'https://images.unsplash.com/photo-1551881192-002e02ad3d87?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Bath Soap', 'https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?w=400&h=400&fit=crop&auto=format&q=80'),
     ('Peanuts', 'https://images.unsplash.com/photo-1549978113-29eb25c8177f?w=400&h=400&fit=crop&auto=format&q=80'),
