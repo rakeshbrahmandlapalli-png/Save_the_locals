@@ -1,15 +1,16 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { copy } from "@/lib/copy";
 import { CategoryIcon } from "@/lib/category-icons";
-import { SearchX } from "lucide-react";
+import { ArrowLeft, ArrowRight, Banknote, Bike, Check, ClipboardList, Home, LayoutGrid, MapPin, Minus, Plus, Search, SearchX, ShoppingBag, ShoppingCart, Smartphone, Store, Trash2, Truck } from "lucide-react";
 import { createPublicClient } from "@/lib/supabase";
 import { RegisterServiceWorker } from "./register-service-worker";
 import type { Category, Product, Shop } from "./page";
 
 type Quantities = Record<string, number>;
+type UsualItem = { product_id: string; qty: number };
 
 type RepeatItem = {
   order_code: string;
@@ -46,6 +47,9 @@ export function Storefront({
   const [quantities, setQuantities] = useState<Quantities>({});
   const [source, setSource] = useState("direct");
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [step, setStep] = useState<"basket" | "checkout">("basket");
+  const [usuals, setUsuals] = useState<UsualItem[]>([]);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [submitting, setSubmitting] = useState(false);
   const [orderCode, setOrderCode] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState("");
@@ -56,6 +60,9 @@ export function Storefront({
   const [repeatItems, setRepeatItems] = useState<RepeatItem[]>([]);
   const [repeatError, setRepeatError] = useState("");
   const [repeatAdded, setRepeatAdded] = useState(false);
+  useEffect(() => {
+    overlayRef.current?.scrollTo({ top: 0 });
+  }, [step, checkoutOpen]);
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase());
   const t = copy;
 
@@ -69,6 +76,15 @@ export function Storefront({
       setSource(sessionStorage.getItem(storageKey) || "direct");
     }
   }, [initialSource, shop.slug]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`stl-usuals:${shop.slug}`) ?? "[]");
+      if (Array.isArray(saved)) setUsuals(saved.filter((item): item is UsualItem => typeof item?.product_id === "string" && Number(item?.qty) > 0));
+    } catch {
+      // Storage can be unavailable (private mode); "Your usuals" simply stays hidden.
+    }
+  }, [shop.slug]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -139,6 +155,11 @@ export function Storefront({
       return;
     }
     setOrderCode(data as string);
+    try {
+      localStorage.setItem(`stl-usuals:${shop.slug}`, JSON.stringify(items));
+    } catch {
+      // Not critical: the order is already placed.
+    }
   }
 
   async function checkRepeatOrder(event: React.FormEvent<HTMLFormElement>) {
@@ -170,36 +191,116 @@ export function Storefront({
     setRepeatAdded(true);
   }
 
+  const basketProducts = products.filter((product) => (quantities[product.id] ?? 0) > 0);
+  const deliveryCharge = form.fulfilment === "delivery" ? shop.delivery_fee : 0;
+  const grandTotal = total + deliveryCharge;
+  const itemLabel = itemCount === 1 ? t.item : t.items;
+  const usualProducts = usuals
+    .map((usual) => ({ usual, product: products.find((product) => product.id === usual.product_id && product.in_stock) }))
+    .filter((entry): entry is { usual: UsualItem; product: Product } => Boolean(entry.product));
+  const suggestion = products.find((product) => product.in_stock && !(quantities[product.id] > 0));
+
+  function closeOverlay() {
+    setCheckoutOpen(false);
+    setStep("basket");
+  }
+
+  function buyUsualsAgain() {
+    setQuantities((current) => {
+      const next = { ...current };
+      for (const { usual, product } of usualProducts) next[product.id] = (next[product.id] ?? 0) + usual.qty;
+      return next;
+    });
+  }
+
   return (
-    <main className="mx-auto min-h-screen max-w-2xl bg-white pb-36 text-slate-950" data-order-source={source}>
+    <main
+      className="mx-auto min-h-screen max-w-2xl bg-[var(--paper)] pb-44 text-[var(--ink)] sm:shadow-[0_0_0_1px_var(--line)]"
+      data-order-source={source}
+      style={{ "--brand": brandColour } as React.CSSProperties}
+    >
       <RegisterServiceWorker />
-      <header className="border-b border-slate-200 px-4 pb-5 pt-6" style={{ borderTop: `5px solid ${brandColour}` }}>
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{t.deliveryArea}</p>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">{shop.name}</h1>
-        {shop.address && <p className="mt-2 text-sm text-slate-500">{shop.address}</p>}
-        {deliveredOrderCount >= 5 && (
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
-            {t.deliveredOrders(new Intl.NumberFormat("en-IN").format(deliveredOrderCount))}
+      <header className="px-5 pb-2 pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-brand-deep min-w-0 font-serif text-3xl font-semibold leading-tight tracking-tight">{shop.name}</h1>
+          <button
+            type="button"
+            onClick={() => itemCount > 0 && setCheckoutOpen(true)}
+            className="bg-card relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+            aria-label={`${t.basket}, ${itemCount} ${itemLabel}`}
+          >
+            <ShoppingCart className="h-5 w-5" aria-hidden="true" />
+            {itemCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-500 px-1 text-[11px] font-bold text-white">{itemCount}</span>
+            )}
+          </button>
+        </div>
+        {shop.address && (
+          <p className="mt-2 flex items-center gap-1.5 text-[17px] font-semibold">
+            <MapPin className="text-brand-deep h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+            <span className="truncate">{shop.address}</span>
           </p>
         )}
+        <p className="mt-0.5 text-sm text-[var(--ink-soft)]">
+          {shop.delivery_fee > 0 ? `₹${formatMoney(shop.delivery_fee)} delivery` : "Free delivery"} <span aria-hidden="true">·</span> Min order ₹{formatMoney(shop.min_order)}
+          {deliveredOrderCount >= 5 && <> <span aria-hidden="true">·</span> {t.deliveredOrders(new Intl.NumberFormat("en-IN").format(deliveredOrderCount))}</>}
+        </p>
+        <div className="relative mt-4">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-stone-500" aria-hidden="true" />
+          <label className="sr-only" htmlFor="product-search">{t.searchPlaceholder}</label>
+          <input
+            id="product-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t.searchPlaceholder}
+            className="w-full rounded-full border border-stone-300 bg-transparent py-3 pl-12 pr-4 text-[15px] outline-none placeholder:text-stone-500 focus:border-[var(--brand)] focus:bg-white"
+          />
+        </div>
       </header>
 
-      <section className="px-4 pt-4">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <h2 className="text-sm font-bold">{t.repeatTitle}</h2>
-          <p className="mt-1 text-xs text-slate-600">{t.repeatPrompt}</p>
+      {usualProducts.length > 0 && (
+        <section className="px-4 pt-4">
+          <div className="bg-brand-tint flex items-center justify-between gap-3 overflow-hidden rounded-2xl py-3 pl-4 pr-3">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-brand-deep whitespace-nowrap font-serif text-xl font-semibold">Your usuals</h2>
+              <p className="whitespace-nowrap text-xs text-stone-600">{usualProducts.length} {usualProducts.length === 1 ? t.item : t.items}</p>
+            </div>
+            <div className="flex -space-x-3" aria-hidden="true">
+              {usualProducts.slice(0, 2).map(({ product }) => (
+                <span key={product.id} className="h-11 w-11 overflow-hidden rounded-full bg-white ring-2 ring-white">
+                  {product.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-brand-deep flex h-full w-full items-center justify-center text-lg font-black">{product.name.slice(0, 1)}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+            <button type="button" onClick={buyUsualsAgain} className="text-brand-deep flex shrink-0 items-center gap-1 text-sm font-bold">
+              Buy again <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+        </section>
+      )}
+
+      <section className="px-4 pt-3">
+        <details className="rounded-2xl bg-card px-4 py-3 text-sm">
+          <summary className="cursor-pointer font-semibold">{t.repeatTitle}</summary>
+          <p className="mt-1 text-xs text-[var(--ink-soft)]">{t.repeatPrompt}</p>
           <form onSubmit={checkRepeatOrder} className="mt-3 flex gap-2">
             <label className="sr-only" htmlFor="repeat-phone">{t.mobile}</label>
-            <input id="repeat-phone" required inputMode="tel" value={repeatPhone} onChange={(e) => setRepeatPhone(e.target.value)} placeholder={t.phoneHint} className="input flex-1" />
-            <button disabled={repeatStatus === "loading"} className="shrink-0 rounded-xl px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60" style={{ backgroundColor: brandColour }}>
+            <input id="repeat-phone" required inputMode="tel" value={repeatPhone} onChange={(e) => setRepeatPhone(e.target.value)} placeholder={t.phoneHint} className="input flex-1 !rounded-xl" />
+            <button disabled={repeatStatus === "loading"} className="bg-brand-deep shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {repeatStatus === "loading" ? t.repeatChecking : t.repeatCheck}
             </button>
           </form>
           {repeatStatus === "error" && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{repeatError}</p>}
-          {repeatStatus === "empty" && <p className="mt-3 text-sm text-slate-600">{t.repeatNotFound}</p>}
+          {repeatStatus === "empty" && <p className="mt-3 text-sm text-[var(--ink-soft)]">{t.repeatNotFound}</p>}
           {repeatStatus === "found" && repeatItems.length > 0 && (
-            <div className="mt-3">
-              <p className="text-xs font-semibold text-slate-500">{t.repeatBasedOn(repeatItems[0].order_code, new Date(repeatItems[0].ordered_at).toLocaleDateString("en-IN"))}</p>
+            <div className="mt-4">
+              <p className="text-xs font-semibold text-[var(--ink-soft)]">{t.repeatBasedOn(repeatItems[0].order_code, new Date(repeatItems[0].ordered_at).toLocaleDateString("en-IN"))}</p>
               <ul className="mt-2 space-y-2">
                 {repeatItems.map((item) => {
                   const displayLabel = item.available ? (item.current_name ?? item.ordered_name) : item.ordered_name;
@@ -216,29 +317,20 @@ export function Storefront({
                   );
                 })}
               </ul>
-              <button type="button" onClick={addRepeatItemsToBasket} className="mt-3 w-full rounded-xl px-4 py-3 text-sm font-bold text-white" style={{ backgroundColor: brandColour }}>
+              <button type="button" onClick={addRepeatItemsToBasket} className="bg-brand-deep mt-3 w-full rounded-xl px-4 py-3 text-sm font-semibold text-white">
                 {t.repeatAddAll}
               </button>
               {repeatAdded && <p className="mt-2 text-sm font-semibold text-emerald-700">{t.repeatAdded}</p>}
             </div>
           )}
-        </div>
+        </details>
       </section>
 
-      <section className="sticky top-0 z-10 bg-white/95 px-4 pb-3 pt-4 backdrop-blur-sm">
-        <label className="sr-only" htmlFor="product-search">{t.searchPlaceholder}</label>
-        <input
-          id="product-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t.searchPlaceholder}
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base outline-none focus:border-slate-700 focus:ring-2 focus:ring-slate-200"
-        />
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1" aria-label="Product categories">
-          <CategoryButton active={categoryId === "all"} onClick={() => setCategoryId("all")} label={t.allCategories} icon={null} />
+      <section className="sticky top-0 z-10 bg-[var(--paper)]/95 px-4 pb-2 pt-4 backdrop-blur-md">
+        <div className="no-scrollbar -mx-4 flex gap-5 overflow-x-auto px-4 pb-1" aria-label="Product categories">
+          <CategoryTile active={categoryId === "all"} onClick={() => setCategoryId("all")} label={t.allCategories} icon={null} initial={false} />
           {categories.map((category) => (
-            <CategoryButton
+            <CategoryTile
               key={category.id}
               active={categoryId === category.id}
               onClick={() => setCategoryId(category.id)}
@@ -249,103 +341,240 @@ export function Storefront({
         </div>
       </section>
 
-      <section className="px-4 pt-2">
+      <section className="px-4 pt-3">
         {filteredProducts.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-10 text-center">
-            <SearchX className="h-6 w-6 text-slate-400" aria-hidden="true" />
-            <p className="text-sm text-slate-600">{t.emptySearch}</p>
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-card px-4 py-12 text-center">
+            <SearchX className="h-7 w-7 text-[var(--ink-soft)]" aria-hidden="true" />
+            <p className="text-sm text-[var(--ink-soft)]">{t.emptySearch}</p>
           </div>
         ) : (
           sections ? (
-            <div className="space-y-6">
+            <div className="space-y-7">
               {sections.map((section) => (
                 <div key={section.key}>
-                  <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wide text-slate-500">
-                    {section.icon && <CategoryIcon icon={section.icon} className="h-4 w-4" />}
-                    {section.label}
-                  </h2>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="mb-3 flex items-baseline justify-between gap-3">
+                    <h2 className="font-serif text-2xl font-semibold tracking-tight">{section.label}</h2>
+                    {section.key !== "uncategorised" && (
+                      <button type="button" onClick={() => setCategoryId(section.key)} className="text-brand-deep text-sm font-semibold">See all</button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
                     {section.items.map((product) => (
-                      <ProductCard key={product.id} product={product} quantity={quantities[product.id] ?? 0} brandColour={brandColour} t={t} onChangeQuantity={changeQuantity} />
+                      <ProductCard key={product.id} product={product} quantity={quantities[product.id] ?? 0} t={t} onChangeQuantity={changeQuantity} />
                     ))}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
               {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} quantity={quantities[product.id] ?? 0} brandColour={brandColour} t={t} onChangeQuantity={changeQuantity} />
+                <ProductCard key={product.id} product={product} quantity={quantities[product.id] ?? 0} t={t} onChangeQuantity={changeQuantity} />
               ))}
             </div>
           )
         )}
       </section>
 
-      <footer className="mt-8 border-t border-slate-200 px-4 py-6 text-xs text-slate-500">
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          <Link href="/terms" className="underline">{t.termsWord}</Link>
-          <Link href="/privacy" className="underline">{t.privacyWord}</Link>
-          <Link href="/refund-policy" className="underline">Refund &amp; cancellation policy</Link>
+      <footer className="mt-10 px-5 pb-6 pt-6 text-xs text-[var(--ink-soft)]">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--line)] pt-5">
+          <Link href="/terms" className="underline decoration-[var(--line)] underline-offset-4">{t.termsWord}</Link>
+          <Link href="/privacy" className="underline decoration-[var(--line)] underline-offset-4">{t.privacyWord}</Link>
+          <Link href="/refund-policy" className="underline decoration-[var(--line)] underline-offset-4">Refund &amp; cancellation policy</Link>
         </div>
       </footer>
 
-      {itemCount > 0 && (
-        <aside className="animate-slide-up fixed inset-x-0 bottom-0 z-20 mx-auto max-w-2xl border-t border-slate-200 bg-white p-4 shadow-[0_-8px_24px_rgba(15,23,42,0.1)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold">{itemCount} {itemCount === 1 ? t.item : t.items}</p>
-              <p className="text-2xl font-bold">₹{formatMoney(total)}</p>
-            </div>
-            <button type="button" onClick={() => setCheckoutOpen(true)} disabled={remaining > 0} className="rounded-xl px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45" style={{ backgroundColor: brandColour }}>
-              {t.openBasket}
+      <div className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-2xl" style={{ "--brand": brandColour } as React.CSSProperties}>
+        {itemCount > 0 && (
+          <div className="animate-slide-up px-3 pb-2">
+            {remaining > 0 && (
+              <p className="mx-2 -mb-2 rounded-t-xl bg-amber-100 px-4 pb-3 pt-1.5 text-center text-xs font-semibold text-amber-900">
+                {t.minimumRemaining(formatMoney(remaining))}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => setCheckoutOpen(true)}
+              className="bg-brand-deep relative flex w-full items-center justify-between gap-4 rounded-xl px-4 py-3.5 text-left text-white shadow-[0_10px_28px_-8px_rgba(0,0,0,0.5)]"
+            >
+              <span className="flex items-center gap-3 text-sm font-semibold">
+                <ShoppingBag className="h-5 w-5" aria-hidden="true" />
+                {itemCount} {itemLabel} <span aria-hidden="true">·</span> ₹{formatMoney(total)}
+              </span>
+              <span className="flex items-center gap-1.5 text-sm font-bold">
+                {t.openBasket}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </span>
             </button>
           </div>
-          <p className={`mt-2 text-xs font-semibold ${remaining > 0 ? "text-amber-700" : "text-emerald-700"}`}>
-            {remaining > 0 ? t.minimumRemaining(formatMoney(remaining)) : t.minimumReached}
-          </p>
-        </aside>
-      )}
+        )}
+        <nav className="flex border-t border-[var(--line)] bg-[var(--paper)]/95 backdrop-blur-md" aria-label="Main">
+          <span className="text-brand-deep flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-bold" aria-current="page">
+            <Home className="h-5 w-5" aria-hidden="true" />
+            Home
+          </span>
+          <Link href={`/s/${shop.slug}/status`} className="flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium text-stone-500">
+            <ClipboardList className="h-5 w-5" aria-hidden="true" />
+            Orders
+          </Link>
+        </nav>
+      </div>
 
       {checkoutOpen && (
-        <div className="fixed inset-0 z-30 overflow-y-auto bg-slate-950/50 px-3 py-5" role="dialog" aria-modal="true" aria-label="Checkout">
-          <section className="mx-auto max-w-lg rounded-2xl bg-white p-5 shadow-xl">
+        <div ref={overlayRef} className="fixed inset-0 z-30 overflow-y-auto bg-[var(--paper)]" role="dialog" aria-modal="true" aria-label={step === "basket" ? "Your basket" : "Checkout"} style={{ "--brand": brandColour } as React.CSSProperties}>
+          <div className="animate-sheet mx-auto flex min-h-full max-w-2xl flex-col px-4 pb-6">
             {orderCode ? (
-              <div className="py-8 text-center">
-                <p className="text-sm font-semibold text-emerald-700">{t.orderPlaced}</p>
-                <h2 className="mt-2 text-2xl font-bold">{t.orderCode}</h2>
-                <p className="mt-4 text-4xl font-black tracking-[0.18em]">{orderCode}</p>
-                <p className="mt-3 text-sm text-slate-600">{t.keepCode}</p>
-                <a href={`/s/${shop.slug}/status?code=${orderCode}`} className="mt-6 inline-block rounded-xl px-5 py-3 font-bold text-white" style={{ backgroundColor: brandColour }}>{t.checkStatus}</a>
+              <div className="my-auto py-16 text-center">
+                <span className="bg-brand-tint text-brand-deep mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+                  <Check className="h-8 w-8" aria-hidden="true" />
+                </span>
+                <p className="mt-4 text-sm font-bold text-emerald-700">{t.orderPlaced}</p>
+                <h2 className="mt-1 font-serif text-2xl font-semibold">{t.orderCode}</h2>
+                <p className="bg-brand-soft text-brand-deep mx-auto mt-4 inline-block rounded-2xl px-6 py-3 text-4xl font-black tracking-[0.18em]">{orderCode}</p>
+                <p className="mt-4 text-sm text-[var(--ink-soft)]">{t.keepCode}</p>
+                <a href={`/s/${shop.slug}/status?code=${orderCode}`} className="bg-brand-deep mt-6 inline-block rounded-xl px-6 py-3.5 font-semibold text-white">{t.checkStatus}</a>
               </div>
+            ) : step === "basket" ? (
+              <>
+                <div className="flex items-center gap-4 py-5">
+                  <button type="button" onClick={closeOverlay} className="flex h-10 w-10 items-center justify-center rounded-full" aria-label={t.close}><ArrowLeft className="h-6 w-6" aria-hidden="true" /></button>
+                  <div>
+                    <h2 className="font-serif text-2xl font-semibold leading-tight">Your basket</h2>
+                    <p className="text-sm text-[var(--ink-soft)]">{itemCount} {itemLabel}</p>
+                  </div>
+                </div>
+                {basketProducts.length === 0 ? (
+                  <p className="py-16 text-center text-sm text-[var(--ink-soft)]">Your basket is empty.</p>
+                ) : (
+                  <>
+                    <div className="bg-card flex items-center justify-between gap-3 rounded-xl px-4 py-3.5 text-[15px]">
+                      <span className="flex items-center gap-2.5">
+                        {form.fulfilment === "delivery" ? <Bike className="h-5 w-5" aria-hidden="true" /> : <Store className="h-5 w-5" aria-hidden="true" />}
+                        {form.fulfilment === "delivery" ? `${t.delivery} · ${shop.delivery_fee > 0 ? `₹${formatMoney(shop.delivery_fee)}` : t.free}` : `${t.pickup} · ${t.free}`}
+                      </span>
+                      <button type="button" onClick={() => setForm({ ...form, fulfilment: form.fulfilment === "delivery" ? "pickup" : "delivery" })} className="text-brand-deep text-sm font-bold">Change</button>
+                    </div>
+                    <ul className="mt-2 divide-y divide-[var(--line)]">
+                      {basketProducts.map((product) => (
+                        <li key={product.id} className="flex gap-4 py-4">
+                          <div className="bg-card h-28 w-28 shrink-0 overflow-hidden rounded-xl">
+                            {product.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={product.image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-brand-deep flex h-full w-full items-center justify-center text-3xl font-black opacity-40" aria-hidden="true">{product.name.slice(0, 1)}</span>
+                            )}
+                          </div>
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <h3 className="text-base font-semibold leading-snug">{product.name}</h3>
+                                <p className="text-sm text-[var(--ink-soft)]">{product.unit}</p>
+                              </div>
+                              <button type="button" onClick={() => changeQuantity(product.id, -(quantities[product.id] ?? 0))} className="-mr-2 -mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-stone-500" aria-label={`Remove ${product.name}`}><Trash2 className="h-[18px] w-[18px]" aria-hidden="true" /></button>
+                            </div>
+                            <div className="mt-auto flex items-end justify-between pt-2">
+                              <p className="text-xl font-bold">₹{formatMoney(product.price * (quantities[product.id] ?? 0))}</p>
+                              <Stepper quantity={quantities[product.id] ?? 0} name={product.name} t={t} onChangeQuantity={(delta) => changeQuantity(product.id, delta)} />
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    {suggestion && (
+                      <div className="mt-2">
+                        <h3 className="font-serif text-xl font-semibold">Forgot something?</h3>
+                        <div className="bg-card mt-3 flex items-center gap-3 rounded-xl p-3">
+                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-white">
+                            {suggestion.image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={suggestion.image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-brand-deep flex h-full w-full items-center justify-center text-xl font-black opacity-40" aria-hidden="true">{suggestion.name.slice(0, 1)}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-[15px] font-semibold">{suggestion.name} <span className="font-normal text-[var(--ink-soft)]">· {suggestion.unit}</span></p>
+                            <p className="mt-0.5 text-base font-bold">₹{formatMoney(suggestion.price)}</p>
+                          </div>
+                          <button type="button" onClick={() => changeQuantity(suggestion.id, 1)} className="bg-brand-deep shrink-0 rounded-lg px-5 py-2.5 text-sm font-semibold text-white" aria-label={`${t.add} ${suggestion.name}`}>{t.add}</button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="mt-4 border-t border-[var(--line)] pt-4">
+                      <div className="flex justify-between text-base"><span>Items</span><span>₹{formatMoney(total)}</span></div>
+                      <div className="mt-3 flex justify-between text-base"><span>{t.delivery}</span><span>{deliveryCharge > 0 ? `₹${formatMoney(deliveryCharge)}` : t.free}</span></div>
+                      <div className="mt-4 flex justify-between border-t border-[var(--line)] pt-4 text-2xl font-bold"><span>{t.total}</span><span>₹{formatMoney(grandTotal)}</span></div>
+                      <p className="mt-3 text-center text-xs text-[var(--ink-soft)]">Final prices shown. No hidden charges.</p>
+                    </div>
+                    {remaining > 0 && <p className="mt-3 rounded-xl bg-amber-100 px-4 py-2.5 text-center text-sm font-semibold text-amber-900">{t.minimumRemaining(formatMoney(remaining))}</p>}
+                    <button
+                      type="button"
+                      disabled={remaining > 0}
+                      onClick={() => setStep("checkout")}
+                      className="bg-brand-deep mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {t.checkout} · ₹{formatMoney(grandTotal)} <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </>
+                )}
+              </>
             ) : (
               <>
-                <div className="flex items-center justify-between gap-4">
-                  <div><p className="text-sm text-slate-500">{itemCount} {t.items}</p><h2 className="text-2xl font-bold">{t.checkout}</h2></div>
-                  <button type="button" onClick={() => setCheckoutOpen(false)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">{t.close}</button>
+                <div className="flex items-center gap-4 py-5">
+                  <button type="button" onClick={() => setStep("basket")} className="flex h-10 w-10 items-center justify-center rounded-full" aria-label="Back to basket"><ArrowLeft className="h-6 w-6" aria-hidden="true" /></button>
+                  <h2 className="font-serif text-2xl font-semibold">{t.checkout}</h2>
                 </div>
-                <div className="mt-5 rounded-xl bg-slate-50 p-4 text-sm">
-                  <div className="flex justify-between"><span>Items</span><strong>₹{formatMoney(total)}</strong></div>
-                  <div className="mt-2 flex justify-between"><span>{t.delivery}</span><strong>{form.fulfilment === "delivery" ? `₹${formatMoney(shop.delivery_fee)}` : t.free}</strong></div>
-                  <div className="mt-3 flex justify-between border-t border-slate-200 pt-3 text-base"><span>{t.total}</span><strong>₹{formatMoney(total + (form.fulfilment === "delivery" ? shop.delivery_fee : 0))}</strong></div>
-                </div>
-                <form onSubmit={submitOrder} className="mt-5 space-y-4">
-                  <Field label={t.name}><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" autoComplete="name" /></Field>
-                  <Field label={t.mobile}><input required inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input" placeholder={t.phoneHint} autoComplete="tel" /></Field>
-                  <fieldset><legend className="mb-2 text-sm font-bold">{t.fulfilmentQuestion}</legend><div className="grid grid-cols-2 gap-2"><Choice label={t.delivery} checked={form.fulfilment === "delivery"} onChange={() => setForm({ ...form, fulfilment: "delivery" })} /><Choice label={t.pickup} checked={form.fulfilment === "pickup"} onChange={() => setForm({ ...form, fulfilment: "pickup" })} /></div></fieldset>
-                  {form.fulfilment === "delivery" && <Field label={t.address}><textarea required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input min-h-20" autoComplete="street-address" /></Field>}
-                  <fieldset><legend className="mb-2 text-sm font-bold">{t.payment}</legend><div className="grid grid-cols-2 gap-2"><Choice label={t.cash} checked={form.payment === "cod"} onChange={() => setForm({ ...form, payment: "cod" })} /><Choice label={t.upi} checked={form.payment === "upi_on_delivery"} onChange={() => setForm({ ...form, payment: "upi_on_delivery" })} /></div></fieldset>
-                  <Field label={t.notes}><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-20" /></Field>
-                  <label className="flex items-start gap-2 text-sm text-slate-700">
-                    <input type="checkbox" className="mt-0.5" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
+                <form onSubmit={submitOrder} className="space-y-5">
+                  <fieldset>
+                    <legend className="sr-only">{t.fulfilmentQuestion}</legend>
+                    <div className="grid grid-cols-2 rounded-full border border-stone-300 p-1">
+                      <ToggleOption icon={<Truck className="h-5 w-5" aria-hidden="true" />} label={t.delivery} checked={form.fulfilment === "delivery"} onChange={() => setForm({ ...form, fulfilment: "delivery" })} />
+                      <ToggleOption icon={<Store className="h-5 w-5" aria-hidden="true" />} label={t.pickup} checked={form.fulfilment === "pickup"} onChange={() => setForm({ ...form, fulfilment: "pickup" })} />
+                    </div>
+                  </fieldset>
+
+                  <section>
+                    <h3 className="mb-3 text-xl font-bold">{form.fulfilment === "delivery" ? "Delivery details" : "Your details"}</h3>
+                    <div className="bg-card space-y-4 rounded-xl p-4">
+                      <Field label={t.name}><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input !rounded-xl" autoComplete="name" /></Field>
+                      <Field label={t.mobile}><input required inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input !rounded-xl" placeholder={t.phoneHint} autoComplete="tel" /></Field>
+                      {form.fulfilment === "delivery" && <Field label={t.address}><textarea required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input min-h-20 !rounded-xl" autoComplete="street-address" /></Field>}
+                      <Field label={t.notes}><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="input min-h-16 !rounded-xl" /></Field>
+                    </div>
+                  </section>
+
+                  <fieldset>
+                    <legend className="mb-3 text-xl font-bold">Payment method</legend>
+                    <div className="grid grid-cols-2 gap-3">
+                      <PaymentTile icon={<Banknote className="h-6 w-6" aria-hidden="true" />} label={t.cash} checked={form.payment === "cod"} onChange={() => setForm({ ...form, payment: "cod" })} />
+                      <PaymentTile icon={<Smartphone className="h-6 w-6" aria-hidden="true" />} label={t.upi} checked={form.payment === "upi_on_delivery"} onChange={() => setForm({ ...form, payment: "upi_on_delivery" })} />
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--ink-soft)]">{form.payment === "cod" ? "Pay when your order arrives." : "Pay by UPI when your order arrives."}</p>
+                  </fieldset>
+
+                  <section>
+                    <h3 className="mb-3 text-xl font-bold">Order summary</h3>
+                    <div className="flex justify-between text-base text-stone-600"><span>Items ({itemCount})</span><span>₹{formatMoney(total)}</span></div>
+                    <div className="mt-2 flex justify-between text-base text-stone-600"><span>{t.delivery}</span><span>{deliveryCharge > 0 ? `₹${formatMoney(deliveryCharge)}` : t.free}</span></div>
+                    <div className="mt-3 flex justify-between border-t border-[var(--line)] pt-3 text-2xl font-bold"><span>{t.total}</span><span>₹{formatMoney(grandTotal)}</span></div>
+                  </section>
+
+                  <label className="flex items-start gap-2.5 text-sm text-stone-700">
+                    <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[var(--brand)]" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
                     <span>{t.agreeToTermsPrefix} <Link href="/terms" target="_blank" className="font-semibold underline">{t.termsWord}</Link> &amp; <Link href="/privacy" target="_blank" className="font-semibold underline">{t.privacyWord}</Link>.</span>
                   </label>
-                  {submitError && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-700">{submitError}</p>}
-                  <button disabled={submitting} className="w-full rounded-xl px-5 py-3.5 font-bold text-white disabled:opacity-60" style={{ backgroundColor: brandColour }}>{submitting ? t.placingOrder : t.placeOrder}</button>
+                  {submitError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{submitError}</p>}
+                  <div>
+                    <button disabled={submitting} className="bg-brand-deep w-full rounded-xl px-5 py-4 text-base font-semibold text-white disabled:opacity-60">
+                      {submitting ? t.placingOrder : `${t.placeOrder} · ₹${formatMoney(grandTotal)}`}
+                    </button>
+                    <p className="mt-3 text-center text-sm text-[var(--ink-soft)]">By placing your order, you confirm these details.</p>
+                  </div>
                 </form>
               </>
             )}
-          </section>
+          </div>
         </div>
       )}
     </main>
@@ -353,71 +582,91 @@ export function Storefront({
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-2 block text-sm font-bold">{label}</span>{children}</label>;
+  return <label className="block"><span className="mb-1.5 block text-sm font-semibold">{label}</span>{children}</label>;
 }
 
-function Choice({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
-  return <label className={`flex cursor-pointer items-center gap-2 rounded-xl border p-3 text-sm font-semibold ${checked ? "border-slate-900 bg-slate-50" : "border-slate-300"}`}><input type="radio" checked={checked} onChange={onChange} />{label}</label>;
-}
-
-function CategoryButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: string | null }) {
+function ToggleOption({ icon, label, checked, onChange }: { icon: React.ReactNode; label: string; checked: boolean; onChange: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold ${active ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700"}`}
-    >
-      {icon && <CategoryIcon icon={icon} className="h-4 w-4" />}
+    <label className={`flex cursor-pointer items-center justify-center gap-2 rounded-full py-3 text-[15px] font-semibold transition ${checked ? "bg-brand-deep text-white" : "text-stone-700"}`}>
+      <input type="radio" checked={checked} onChange={onChange} className="sr-only" />
+      {icon}
       {label}
+    </label>
+  );
+}
+
+function PaymentTile({ icon, label, checked, onChange }: { icon: React.ReactNode; label: string; checked: boolean; onChange: () => void }) {
+  return (
+    <label className={`flex cursor-pointer items-center justify-between gap-2 rounded-xl border-[1.5px] px-4 py-4 transition ${checked ? "border-brand bg-white" : "border-[var(--line)] bg-card"}`}>
+      <input type="radio" checked={checked} onChange={onChange} className="sr-only" />
+      <span className="flex items-center gap-2.5 text-base font-semibold">{icon}{label}</span>
+      <span className={`flex h-6 w-6 items-center justify-center rounded-full border-2 ${checked ? "border-brand" : "border-stone-300"}`} aria-hidden="true">
+        {checked && <span className="bg-brand h-3 w-3 rounded-full" />}
+      </span>
+    </label>
+  );
+}
+
+function CategoryTile({ active, onClick, label, icon, initial = true }: { active: boolean; onClick: () => void; label: string; icon: string | null; initial?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={active} className="flex shrink-0 flex-col items-center gap-1.5">
+      <span className={`flex h-14 w-14 items-center justify-center rounded-full ${active ? "bg-brand-tint text-brand-deep" : "bg-card text-stone-600"}`}>
+        {icon ? <CategoryIcon icon={icon} className="h-6 w-6" /> : initial ? <span className="font-serif text-xl font-semibold" aria-hidden="true">{label.slice(0, 1).toUpperCase()}</span> : <LayoutGrid className="h-6 w-6" aria-hidden="true" />}
+      </span>
+      <span className={`border-b-2 pb-0.5 text-sm ${active ? "text-brand-deep border-brand font-bold" : "border-transparent font-medium text-stone-600"}`}>{label}</span>
     </button>
   );
 }
 
-function ProductCard({ product, quantity, brandColour, t, onChangeQuantity }: {
+function Stepper({ quantity, name, t, onChangeQuantity }: { quantity: number; name: string; t: typeof copy; onChangeQuantity: (delta: number) => void }) {
+  return (
+    <div className="border-brand text-brand-deep flex items-center rounded-lg border-[1.5px] bg-white" aria-label={`${name} quantity`}>
+      <button type="button" className="flex h-9 w-9 items-center justify-center" onClick={() => onChangeQuantity(-1)} aria-label={`${t.removeOne} ${name}`}><Minus className="h-4 w-4" aria-hidden="true" /></button>
+      <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{quantity}</span>
+      <button type="button" className="flex h-9 w-9 items-center justify-center" onClick={() => onChangeQuantity(1)} aria-label={`${t.addOne} ${name}`}><Plus className="h-4 w-4" aria-hidden="true" /></button>
+    </div>
+  );
+}
+
+function ProductCard({ product, quantity, t, onChangeQuantity }: {
   product: Product;
   quantity: number;
-  brandColour: string;
   t: typeof copy;
   onChangeQuantity: (productId: string, delta: number) => void;
 }) {
   return (
-    <article className={`flex min-h-56 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md ${!product.in_stock ? "opacity-70" : ""}`}>
-      <div className="relative aspect-[4/3] bg-slate-100">
+    <article className={`flex flex-col ${!product.in_stock ? "opacity-70" : ""}`}>
+      <div className="bg-card relative aspect-[4/3] overflow-hidden rounded-xl">
         {product.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-slate-400" aria-hidden="true">
+          <div className="text-brand-deep flex h-full w-full items-center justify-center text-5xl font-black opacity-40" aria-hidden="true">
             {product.name.slice(0, 1)}
           </div>
         )}
         {!product.in_stock && (
           <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-            <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-bold text-white">Out of stock</span>
+            <span className="rounded-full bg-stone-900 px-3 py-1 text-xs font-bold text-white">Out of stock</span>
           </div>
         )}
       </div>
-      <div className="flex flex-1 flex-col p-3">
-        <h3 className="text-sm font-bold leading-snug">{product.name}</h3>
-        <p className="mt-1 text-xs text-slate-500">{product.unit}</p>
-        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <p className="text-base font-bold">₹{formatMoney(product.price)}</p>
+      <div className="flex flex-1 flex-col pt-2.5">
+        <h3 className="text-[15px] font-semibold leading-snug">{product.name}</h3>
+        <p className="mt-0.5 text-sm text-[var(--ink-soft)]">{product.unit}</p>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2.5">
+          <p className="text-lg font-bold">₹{formatMoney(product.price)}</p>
           {product.in_stock && (quantity === 0 ? (
             <button
               type="button"
               onClick={() => onChangeQuantity(product.id, 1)}
-              className="rounded-lg border px-3 py-1.5 text-sm font-bold"
-              style={{ borderColor: brandColour, color: brandColour }}
+              className="bg-brand-deep rounded-lg px-5 py-2 text-sm font-semibold text-white"
               aria-label={`${t.add} ${product.name}`}
             >
               {t.add}
             </button>
           ) : (
-            <div className="flex items-center rounded-full border border-slate-300" aria-label={`${product.name} quantity`}>
-              <button type="button" className="h-9 w-9 text-lg" onClick={() => onChangeQuantity(product.id, -1)} aria-label={`${t.removeOne} ${product.name}`}>−</button>
-              <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{quantity}</span>
-              <button type="button" className="h-9 w-9 text-lg" onClick={() => onChangeQuantity(product.id, 1)} aria-label={`${t.addOne} ${product.name}`}>+</button>
-            </div>
+            <Stepper quantity={quantity} name={product.name} t={t} onChangeQuantity={(delta) => onChangeQuantity(product.id, delta)} />
           ))}
         </div>
       </div>

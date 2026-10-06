@@ -1,28 +1,51 @@
 @import "tailwindcss";
 
+@theme inline {
+  --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
 :root {
   color-scheme: light;
-  font-family: Arial, Helvetica, sans-serif;
+  --ink: #1c1917;
+  --ink-soft: #78716c;
+  --paper: #f7f5ef;
+  --card: #efece4;
+  --line: #ece7df;
+  --brand: #285943;
 }
 
 body {
   margin: 0;
-  background: #f7f7f5;
-  color: #1f2933;
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
-.input {
-  width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.75rem;
-  background: white;
-  padding: 0.75rem 0.875rem;
-  outline: none;
-}
+/* Per-shop brand colour. Set --brand on a wrapper and these follow it. */
+.bg-brand { background-color: var(--brand); }
+.text-brand { color: var(--brand); }
+.border-brand { border-color: var(--brand); }
+.bg-brand-soft { background-color: color-mix(in srgb, var(--brand) 9%, white); }
+.bg-brand-tint { background-color: color-mix(in srgb, var(--brand) 16%, white); }
+.bg-card { background-color: var(--card); }
+.bg-brand-deep { background-color: color-mix(in srgb, var(--brand) 82%, black); }
+.text-brand-deep { color: color-mix(in srgb, var(--brand) 82%, black); }
 
-.input:focus {
-  border-color: #334155;
-  box-shadow: 0 0 0 3px #e2e8f0;
+@layer components {
+  .input {
+    width: 100%;
+    border: 1.5px solid var(--line);
+    border-radius: 1rem;
+    background: white;
+    padding: 0.8rem 1rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 14%, transparent);
+  }
 }
 
 button,
@@ -32,18 +55,26 @@ input {
 
 button {
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 button:focus-visible,
 input:focus-visible {
-  outline: 3px solid rgba(15, 23, 42, 0.2);
+  outline: 3px solid color-mix(in srgb, var(--brand) 35%, transparent);
   outline-offset: 2px;
 }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
 @keyframes slide-up-fade-in {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -52,5 +83,19 @@ input:focus-visible {
 }
 
 .animate-slide-up {
-  animation: slide-up-fade-in 0.2s ease-out;
+  animation: slide-up-fade-in 0.25s ease-out;
+}
+
+@keyframes sheet-in {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-sheet {
+  animation: sheet-in 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-up, .animate-sheet { animation: none; }
+  button:active:not(:disabled) { transform: none; }
 }
