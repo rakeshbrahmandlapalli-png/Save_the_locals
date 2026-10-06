@@ -42,7 +42,7 @@ export function FulfilmentSwitch() {
 export function Bill({ title = "Bill" }: { title?: string }) {
   const { subtotal, deliveryCharge, total, fulfilment, productCount, units } = useStore();
   return (
-    <section aria-label="Bill details" className="surface p-4">
+    <section aria-label="Bill details" className="surface bill-summary p-4">
       <h2 className="text-sm font-bold">{title}</h2>
       <dl className="mt-2 space-y-1.5 text-sm">
         <div className="flex justify-between gap-4"><dt className="text-[var(--ink-soft)]">{countLine(productCount, units).replace(/^./, (letter) => letter.toUpperCase())}</dt><dd>₹{formatMoney(subtotal)}</dd></div>
@@ -60,7 +60,7 @@ export function BasketView({ depth }: { depth: number }) {
   // Suggestions: in stock, not already in the basket, from the same aisles first.
   const basketAisles = new Set(basketProducts.map((product) => product.category_id));
   const candidates = products.filter((product) => product.in_stock && !(quantities[product.id] > 0));
-  const suggestions = [...candidates.filter((product) => basketAisles.has(product.category_id)), ...candidates.filter((product) => !basketAisles.has(product.category_id))].slice(0, 3);
+  const suggestions = [...candidates.filter((product) => basketAisles.has(product.category_id)), ...candidates.filter((product) => !basketAisles.has(product.category_id))].slice(0, 1);
 
   return (
     <div className="animate-sheet fixed inset-0 overflow-y-auto overscroll-contain bg-[var(--ivory)]" style={{ zIndex: 50 + depth }} role="dialog" aria-modal="true" aria-labelledby="basket-heading">
@@ -84,7 +84,7 @@ export function BasketView({ depth }: { depth: number }) {
           <div className="space-y-5">
             <FulfilmentSwitch />
 
-            <ul className="surface divide-y divide-dashed divide-[var(--line-strong)] px-3" aria-label="Items in your basket">
+            <ul className="surface divide-y divide-[var(--line-strong)] px-3" aria-label="Items in your basket">
               {basketProducts.map((product) => {
                 const quantity = quantities[product.id] ?? 0;
                 const aisle = aisleOf(product);

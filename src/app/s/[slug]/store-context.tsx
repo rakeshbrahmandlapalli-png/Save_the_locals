@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { aisleAccent, deriveCollections, slugify, type Accent, type Collection } from "@/lib/collections";
+import { storefrontColour } from "@/lib/store-brand";
 import { MAX_QTY } from "./quantity-controls";
 import type { Category, Product, Shop } from "./page";
 
@@ -113,7 +114,7 @@ export function StoreProvider({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const brandColour = shop.brand?.primary_colour || "#285943";
+  const brandColour = storefrontColour(shop.name, shop.brand?.primary_colour);
 
   const aisles = useMemo<Aisle[]>(() => {
     const used = new Set<string>();

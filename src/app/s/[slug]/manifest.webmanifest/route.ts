@@ -1,3 +1,4 @@
+import { storefrontName, storefrontColour } from "@/lib/store-brand";
 import { createPublicClient } from "@/lib/supabase";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
@@ -10,8 +11,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     .eq("active", true)
     .maybeSingle<{ name: string; brand: { primary_colour?: string; logo_url?: string | null } | null }>();
 
-  const name = shop?.name ?? "Save the Locals";
-  const themeColour = shop?.brand?.primary_colour || "#285943";
+  const name = storefrontName(shop?.name ?? "Nextdoor Basket");
+  const themeColour = storefrontColour(shop?.name ?? "", shop?.brand?.primary_colour);
   const iconUrl = shop?.brand?.logo_url || `/s/${slug}/icon`;
 
   const manifest = {

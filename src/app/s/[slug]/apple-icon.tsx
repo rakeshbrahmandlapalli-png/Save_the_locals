@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { storefrontName, storefrontColour } from "@/lib/store-brand";
 import { createPublicClient } from "@/lib/supabase";
 
 export const size = { width: 180, height: 180 };
@@ -13,8 +14,8 @@ export default async function AppleIcon({ params }: { params: Promise<{ slug: st
     .eq("slug", slug)
     .maybeSingle<{ name: string; brand: { primary_colour?: string } | null }>();
 
-  const letter = (shop?.name ?? "S").trim().charAt(0).toUpperCase();
-  const colour = shop?.brand?.primary_colour || "#285943";
+  const letter = storefrontName(shop?.name ?? "Nextdoor Basket").trim().charAt(0).toUpperCase();
+  const colour = storefrontColour(shop?.name ?? "", shop?.brand?.primary_colour);
 
   return new ImageResponse(
     (

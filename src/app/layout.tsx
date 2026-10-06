@@ -6,8 +6,8 @@ const inter = Inter({ subsets: ["latin"], display: "swap" });
 const fraunces = Fraunces({ subsets: ["latin"], display: "swap", variable: "--font-fraunces" });
 
 export const metadata: Metadata = {
-  title: "Save the Locals",
-  description: "Online ordering for neighbourhood shops",
+  title: "Nextdoor Basket",
+  description: "Your neighbourhood essentials, right next door.",
 };
 
 // viewport-fit=cover lets the fixed bottom bars respect the device safe area (env(safe-area-inset-*)).

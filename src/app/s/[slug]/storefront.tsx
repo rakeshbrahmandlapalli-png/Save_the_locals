@@ -59,7 +59,7 @@ function BottomArea() {
   const { shop, units, productCount, subtotal, open, stack, goHome, typing, bumpKey } = useStore();
   if (typing) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40">
+    <div className="fixed inset-x-0 bottom-0 z-40 pointer-events-none [&>*]:pointer-events-auto">
       {units > 0 && (
         <div className="mx-auto max-w-[1120px] px-3 pb-2 sm:px-6">
           <button type="button" onClick={() => open({ kind: "basket" })} className="btn-primary animate-slide-up min-h-14 w-full justify-between px-4 text-left">
@@ -74,7 +74,7 @@ function BottomArea() {
           </button>
         </div>
       )}
-      <BottomNav slug={shop.slug} active="home" onHome={stack.length > 0 ? goHome : () => window.scrollTo({ top: 0, behavior: "smooth" })} />
+      <BottomNav slug={shop.slug} active="home" onAisles={() => open({ kind: "collection", id: "all" })} aislesActive={stack.length > 0} onHome={stack.length > 0 ? goHome : () => window.scrollTo({ top: 0, behavior: "smooth" })} />
     </div>
   );
 }

@@ -24,37 +24,22 @@ function useImageProps(product: Product) {
 export function ProductCard({ product }: { product: Product }) {
   const image = useImageProps(product);
   return (
-    <article className="surface flex min-w-0 flex-col p-2">
-      <ProductImage {...image} className={`aspect-[4/3] rounded-md ${product.in_stock ? "" : "opacity-55"}`} />
-      <div className="flex flex-1 flex-col px-1 pt-2">
-        <h3 className="line-clamp-2 min-h-10 break-words text-sm font-medium leading-5">{product.name}</h3>
-        <p className="mt-1 flex items-baseline justify-between gap-2">
-          <span className="text-[15px] font-bold leading-5">₹{formatMoney(product.price)}</span>
-          <span className="truncate text-xs text-[var(--ink-soft)]">{product.unit}</span>
-        </p>
-        <div className="mt-2">
-          <ProductControl product={product} />
-        </div>
+    <article className="product-tile flex min-w-0 flex-col">
+      <ProductImage {...image} className={`product-photo aspect-square ${product.in_stock ? "" : "opacity-55"}`} />
+      <div className="product-control"><ProductControl product={product} /></div>
+      <div className="product-copy flex flex-1 flex-col">
+        <h3 className="line-clamp-2 break-words">{product.name}</h3>
+        <p className="mt-0.5 text-xs text-[var(--ink-soft)]">{product.unit}</p>
+        <p className="mt-2 text-base font-bold tracking-tight">₹{formatMoney(product.price)}</p>
       </div>
     </article>
   );
 }
 
-/** Narrow card for horizontal shelves (Buy again, collections). */
+/** Same card system on horizontal shelves, keeping controls and spacing consistent. */
 export function ProductMini({ product }: { product: Product }) {
-  const image = useImageProps(product);
   return (
-    <article className="surface flex w-[9.25rem] shrink-0 snap-start flex-col p-2">
-      <ProductImage {...image} className={`aspect-[4/3] rounded-md ${product.in_stock ? "" : "opacity-55"}`} iconClassName="h-7 w-7" />
-      <h3 className="mt-2 line-clamp-2 min-h-10 break-words px-0.5 text-[13px] font-medium leading-5">{product.name}</h3>
-      <p className="mt-0.5 flex items-baseline justify-between gap-1 px-0.5">
-        <span className="text-sm font-bold">₹{formatMoney(product.price)}</span>
-        <span className="truncate text-[11px] text-[var(--ink-soft)]">{product.unit}</span>
-      </p>
-      <div className="mt-2">
-        <ProductControl product={product} />
-      </div>
-    </article>
+    <div className="w-[9.25rem] shrink-0 snap-start"><ProductCard product={product} /></div>
   );
 }
 

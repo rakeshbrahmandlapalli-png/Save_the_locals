@@ -5,24 +5,24 @@
 }
 
 /*
-  Design tokens. One strong colour (forest green, overridable per shop via --brand), a warm ivory
-  page, white product surfaces and four muted aisle accents. Radii stay small and consistent.
+  Bright white storefront, leaf-green actions and restrained aisle accents.
+  Legacy token names remain compatible with the owner and admin screens.
 */
 :root {
   color-scheme: light;
-  --ivory: #f6f1e7;
-  --ivory-deep: #ede6d7;
+  --ivory: #ffffff;
+  --ivory-deep: #f3f6f4;
   --surface: #ffffff;
-  --tile: #eeece6;
-  --ink: #1d231f;
-  --ink-soft: #57605a;
-  --line: #e3dbcc;
-  --line-strong: #cdc2ad;
-  --brand: #285943;
-  --sage: #5b8264;
-  --clay: #a95c3b;
-  --mustard: #98741f;
-  --slate: #4b6d80;
+  --tile: #f4f6f5;
+  --ink: #202920;
+  --ink-soft: #657067;
+  --line: #e5ebe6;
+  --line-strong: #ccd7cf;
+  --brand: #27834a;
+  --sage: #27834a;
+  --clay: #d98647;
+  --mustard: #b08b22;
+  --slate: #458dae;
   --accent: var(--brand);
   --radius-sm: 6px;
   --radius: 10px;
@@ -93,7 +93,7 @@ body {
     justify-content: center;
     gap: 0.5rem;
     border-radius: 8px;
-    background: color-mix(in srgb, var(--brand) 84%, black);
+    background: var(--brand);
     padding: 0 1.25rem;
     font-weight: 600;
     color: white;
@@ -133,43 +133,27 @@ body {
   }
   .chip[aria-pressed="true"], .chip[aria-selected="true"] {
     border-color: color-mix(in srgb, var(--brand) 84%, black);
-    background: color-mix(in srgb, var(--brand) 84%, black);
+    background: var(--brand);
     color: white;
   }
 
-  /*
-    The one recurring motif: a shelf-edge label. A small tag with the aisle colour on its left edge,
-    sitting on a thin rule, used for section headings only.
-  */
+  /* Clear section hierarchy without ornamental shelf-label containers. */
   .shelf-head {
     display: flex;
     align-items: center;
     gap: 0.625rem;
   }
   .shelf-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    border: 1px solid var(--line-strong);
-    border-left: 3px solid var(--accent);
-    border-radius: 2px;
-    background: var(--surface);
-    padding: 0.1875rem 0.5rem 0.1875rem 0.4375rem;
-    font-size: 0.6875rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+    font-size: 1.125rem;
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 1.4;
     color: var(--ink);
-    white-space: nowrap;
   }
-  .shelf-rule {
-    height: 1px;
-    flex: 1 1 auto;
-    background: var(--line-strong);
-  }
+  .shelf-rule { flex: 1; }
 
-  /* Receipt-style dashed rule for the basket and bill. */
-  .receipt-rule { border-top: 1px dashed var(--line-strong); }
+  /* Quiet separators for the basket and bill. */
+  .receipt-rule { border-top: 1px solid var(--line); }
 }
 
 /* In the base layer so Tailwind text-size/weight utilities on buttons and inputs still win. */
@@ -221,4 +205,31 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Nextdoor Basket: airy white surfaces, lively leaf green, and original aisle artwork. */
+.store-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.brand-lockup { display:flex; align-items:center; gap:8px; color:var(--brand); }
+.brand-lockup span { color:var(--ink); font-size:14px; font-weight:800; letter-spacing:-.04em; line-height:1.1; }
+.neighbourhood-banner { display:flex; align-items:center; min-height:120px; overflow:hidden; background:#eff8ee; border-radius:16px; padding:14px; }
+.neighbourhood-banner h2 { font-size:23px; font-weight:800; line-height:1.13; letter-spacing:-.045em; }
+.neighbourhood-banner img { width:42%; max-width:225px; margin:-20px -12px -20px 0; align-self:center; }
+.aisle-art { width:100%; height:76px; border-radius:12px; display:flex; align-items:center; justify-content:center; }
+.aisle-art svg { height:66px; width:76px; }
+.product-tile { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:white; }
+.product-tile .product-photo { background:#f4f6f5; }
+.product-tile .product-photo img { padding:8px; }
+.product-tile .product-control { width:124px; max-width:calc(100% - 12px); margin:-17px 6px 0 auto; position:relative; z-index:1; }
+.product-tile .btn-outline { background:white; font-size:13px; box-shadow:0 2px 4px #20292008; }
+.product-copy { padding:10px 12px 12px; }
+.product-copy h3 { min-height:40px; font-size:13px; line-height:20px; font-weight:600; }
+.collection-list { background:#f5f9f6; border-radius:14px; }
+.bill-summary { background:#f3f8f4; border-color:#e5eee7; }
+.bottom-navigation { background:white; box-shadow:0 -4px 16px #20292005; }
+@media(min-width:640px) {
+ .neighbourhood-banner { min-height:190px; padding:28px; }
+ .neighbourhood-banner h2 { font-size:36px; }
+ .neighbourhood-banner img { margin-left:auto; }
+ .aisle-art { height:105px; }
+ .aisle-art svg { height:90px; width:100px; }
 }

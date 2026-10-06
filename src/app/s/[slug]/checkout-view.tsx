@@ -1,5 +1,6 @@
 "use client";
 
+import { storefrontName } from "@/lib/store-brand";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Banknote, Check, Smartphone } from "lucide-react";
@@ -81,7 +82,7 @@ export function CheckoutView({ depth }: { depth: number }) {
         <div className="mx-auto flex min-h-full max-w-md flex-col items-center justify-center px-6 py-16 text-center">
           <span className="bg-brand-tint text-brand-deep flex h-14 w-14 items-center justify-center rounded-full"><Check className="h-7 w-7" aria-hidden="true" /></span>
           <h1 id="placed-heading" className="mt-4 text-xl font-bold">Order placed</h1>
-          <p className="mt-1 text-sm text-[var(--ink-soft)]">{shop.name} has your order. Keep this code to check on it.</p>
+          <p className="mt-1 text-sm text-[var(--ink-soft)]">{storefrontName(shop.name)} has your order. Keep this code to check on it.</p>
           <p className="surface mt-5 px-6 py-3 font-mono text-3xl font-bold tracking-[0.2em]">{orderCode}</p>
           <div className="mt-6 flex w-full flex-col gap-2">
             <a href={`/s/${shop.slug}/status?code=${orderCode}`} className="btn-primary w-full">{t.checkStatus}</a>

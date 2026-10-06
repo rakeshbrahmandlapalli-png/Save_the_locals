@@ -3,7 +3,8 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, MapPin, Phone, RotateCcw, Search, SearchX, ShoppingBasket, X } from "lucide-react";
-import { CategoryIcon } from "@/lib/category-icons";
+import { AisleArt } from "./aisle-art";
+import { storefrontName } from "@/lib/store-brand";
 import { copy as t } from "@/lib/copy";
 import { createPublicClient } from "@/lib/supabase";
 import { ProductCard, ProductMini, ProductRow, ShelfAction, ShelfHeader } from "./product-card";
@@ -55,13 +56,13 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
       <header className="px-4 pb-3 pt-4 sm:px-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 id="store-name" className="text-brand-deep truncate font-serif text-[17px] font-semibold leading-6" title={shop.name}>{shop.name}</h1>
+            <div className="brand-lockup"><ShoppingBasket className="h-7 w-7 shrink-0" aria-hidden="true" /><h1 id="store-name" className="text-[17px] font-extrabold tracking-tight" title={shop.name}>{storefrontName(shop.name)}</h1></div>
             <button
               type="button"
               onClick={() => setDetailsOpen((value) => !value)}
               aria-expanded={detailsOpen}
               aria-controls="store-details"
-              className="-ml-1 mt-0.5 flex min-h-11 max-w-full items-center gap-1.5 rounded-md px-1 text-left"
+              className="-ml-1 flex min-h-11 max-w-full items-center gap-1.5 rounded-md px-1 text-left"
             >
               <MapPin className="text-brand-deep h-[18px] w-[18px] shrink-0" aria-hidden="true" />
               <span className="truncate text-lg font-bold leading-6">{location ?? "Store details"}</span>
@@ -75,7 +76,7 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
         </div>
         {detailsOpen && (
           <div id="store-details" className="surface mt-3 space-y-1.5 p-3 text-sm">
-            <p className="font-semibold">{shop.name}</p>
+            <p className="font-semibold">{storefrontName(shop.name)}</p>
             {shop.address && <p className="text-[var(--ink-soft)]">{shop.address}</p>}
             <p className="text-[var(--ink-soft)]">Delivers within {formatMoney(shop.delivery_radius_km)} km. Pickup from the shop is free.</p>
             {deliveredOrderCount >= 5 && <p className="text-[var(--ink-soft)]">{t.deliveredOrders(new Intl.NumberFormat("en-IN").format(deliveredOrderCount))}</p>}
@@ -99,8 +100,8 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
             enterKeyHint="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder={`Search ${plural(products.length, "product", "products")}`}
-            className="h-12 w-full rounded-lg border border-[var(--line-strong)] bg-white pl-11 pr-11 text-base outline-none placeholder:text-[var(--ink-soft)] focus:border-[var(--brand)]"
+            placeholder="What’s on your list?"
+            className="h-12 w-full rounded-lg border border-[var(--line)] bg-[var(--tile)] pl-11 pr-11 text-base outline-none placeholder:text-[var(--ink-soft)] focus:border-[var(--brand)]"
           />
           {query && (
             <button type="button" onClick={() => setQuery("")} className="absolute right-0.5 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-[var(--ink-soft)]" aria-label="Clear search">
@@ -128,7 +129,20 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
           )}
         </section>
       ) : (
-        <div className="space-y-7 px-4 pt-4 sm:px-6">
+        <div className="space-y-6 px-4 pt-4 sm:px-6">
+          {products.length > 0 && (
+            <section className="neighbourhood-banner" aria-label="Explore everyday essentials">
+              <div className="min-w-0 flex-1">
+                <h2>Everyday needs.<br />Right next door.</h2>
+                <button type="button" onClick={() => open({ kind: "collection", id: "all" })} className="mt-2 inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-brand">
+                  Explore essentials <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              {/* Original decorative artwork; all banner copy remains accessible HTML. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/neighbourhood-store.webp" alt="" width="225" height="225" />
+            </section>
+          )}
           {units > 0 && remaining > 0 && underFifty && (
             <button
               type="button"
@@ -142,20 +156,18 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
             </button>
           )}
 
-          <BuyAgain usualProducts={usualProducts} />
-
           {aisles.length > 0 && (
             <section aria-labelledby="aisles-heading">
-              <ShelfHeader id="aisles-heading" title="Aisles" action={<ShelfAction onClick={() => open({ kind: "collection", id: "all" })}>All products</ShelfAction>} />
+              <ShelfHeader id="aisles-heading" title="Shop by aisle" action={<ShelfAction onClick={() => open({ kind: "collection", id: "all" })}>All products</ShelfAction>} />
               <div className={aisles.length > 8 ? "no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4" : `mt-3 grid grid-cols-4 gap-2 ${aisles.length > 6 ? "sm:grid-cols-6 lg:grid-cols-8" : aisles.length > 4 ? "sm:grid-cols-6" : ""}`}>
                 {aisles.map((aisle) => (
                   <button
                     key={aisle.id}
                     type="button"
                     onClick={() => open({ kind: "category", id: aisle.id })}
-                    className={`accent-${aisle.accent} bg-accent-tint flex min-h-[5.25rem] flex-col items-center justify-center gap-1.5 rounded-[var(--radius)] px-1 py-2 text-center ${aisles.length > 8 ? "w-20 shrink-0" : ""}`}
+                    className={`flex min-w-0 flex-col items-center gap-2 text-center ${aisles.length > 8 ? "w-20 shrink-0" : ""}`}
                   >
-                    <CategoryIcon icon={aisle.icon} className="text-accent h-7 w-7 [stroke-width:1.5]" />
+                    <AisleArt name={aisle.name} icon={aisle.icon} />
                     <span className="line-clamp-2 text-[12px] font-semibold leading-4">{aisle.name}</span>
                     <span className="sr-only">, {plural(aisle.productIds.length, "item", "items")}</span>
                   </button>
@@ -164,13 +176,15 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
             </section>
           )}
 
+          {usualProducts.length > 0 && <BuyAgain usualProducts={usualProducts} />}
+
           {smallCatalogue ? (
             <section aria-labelledby="all-heading">
               <ShelfHeader id="all-heading" title="Everything" />
               <ProductGrid products={products} />
             </section>
           ) : (
-            collections.map((item) => {
+            [...collections].sort((a, b) => Number(b.id === "cooking") - Number(a.id === "cooking")).map((item) => {
               const list = productsOf(item.productIds);
               const headingId = `collection-${item.id}`;
               const seeAll = <ShelfAction onClick={() => open({ kind: "collection", id: item.id })} label={`See all ${item.title}`}>See all {list.length}</ShelfAction>;
@@ -178,7 +192,7 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
                 return (
                   <section key={item.id} aria-labelledby={headingId}>
                     <ShelfHeader id={headingId} title={item.title} accent={item.accent} action={seeAll} />
-                    <ul className="surface mt-3 divide-y divide-[var(--line)] px-3">
+                    <ul className="surface collection-list mt-3 divide-y divide-[var(--line)] px-3">
                       {list.slice(0, 4).map((product) => <ProductRow key={product.id} product={product} />)}
                     </ul>
                   </section>
@@ -200,6 +214,8 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
               );
             })
           )}
+
+          {usualProducts.length === 0 && <BuyAgain usualProducts={usualProducts} />}
 
           {!smallCatalogue && (
             <button type="button" onClick={() => open({ kind: "collection", id: "all" })} className="btn-outline h-12 w-full text-[15px]">
@@ -223,7 +239,7 @@ export function HomeView({ deliveredOrderCount }: { deliveredOrderCount: number 
 
 export function ProductGrid({ products }: { products: Product[] }) {
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {products.map((product) => <ProductCard key={product.id} product={product} />)}
     </div>
   );

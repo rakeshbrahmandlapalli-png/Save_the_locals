@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { storefrontName } from "@/lib/store-brand";
 import { notFound } from "next/navigation";
 import { createPublicClient } from "@/lib/supabase";
 import { Storefront } from "./storefront";
@@ -9,7 +10,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const supabase = createPublicClient();
   const { data: shop } = await supabase.from("shops").select("name").eq("slug", slug).eq("active", true).maybeSingle<{ name: string }>();
-  const name = shop?.name ?? "Save the Locals";
+  const name = storefrontName(shop?.name ?? "Nextdoor Basket");
   return {
     title: name,
     manifest: `/s/${slug}/manifest.webmanifest`,

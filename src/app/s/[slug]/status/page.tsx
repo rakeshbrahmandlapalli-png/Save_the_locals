@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { storefrontName, storefrontColour } from "@/lib/store-brand";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, ChevronDown, PackageCheck, Phone, Search, XCircle } from "lucide-react";
@@ -91,7 +92,7 @@ export default function OrderStatusPage() {
     }
   }
 
-  const brandColour = shop?.brand?.primary_colour || "#285943";
+  const brandColour = storefrontColour(shop?.name ?? "", shop?.brand?.primary_colour);
   const steps = result?.fulfilment === "pickup" ? PICKUP_STEPS : DELIVERY_STEPS;
   const summary = result ? headline(result.status, result.fulfilment) : null;
 
@@ -102,7 +103,7 @@ export default function OrderStatusPage() {
           <Link href={`/s/${slug}`} className="-ml-2 flex h-11 w-11 items-center justify-center rounded-md" aria-label={t.back}><ArrowLeft className="h-6 w-6" aria-hidden="true" /></Link>
           <div className="min-w-0">
             <h1 className="text-lg font-bold leading-6">Your order</h1>
-            {shop && <p className="text-brand-deep truncate font-serif text-sm font-semibold">{shop.name}</p>}
+            {shop && <p className="text-brand-deep truncate text-sm font-semibold">{storefrontName(shop.name)}</p>}
           </div>
         </div>
 
@@ -190,20 +191,18 @@ function OrderProgress({ steps, status }: { steps: Step[]; status: string }) {
   const effective = steps.some((step) => step.key === status) ? status : "confirmed";
   const currentIndex = steps.findIndex((step) => step.key === effective);
   return (
-    <ol className="flex items-start" aria-label="Order progress">
+    <ol className="space-y-0 px-2" aria-label="Order progress">
       {steps.map((step, index) => {
         const done = index < currentIndex || (index === currentIndex && step.key === "delivered");
         const current = index === currentIndex && !done;
         return (
-          <Fragment key={step.key}>
-            {index > 0 && <li aria-hidden="true" className={`mt-4 h-0.5 flex-1 ${index <= currentIndex ? "bg-brand-deep" : "bg-[var(--line-strong)]"}`} />}
-            <li className="flex w-[4.5rem] shrink-0 flex-col items-center" aria-current={current ? "step" : undefined}>
+            <li key={step.key} className="relative flex min-h-16 items-start gap-3" aria-current={current ? "step" : undefined}>
+              {index < steps.length - 1 && <span className={`absolute left-[15px] top-8 h-8 border-l-2 ${index < currentIndex ? "border-brand" : "border-[var(--line)]"}`} aria-hidden="true" />}
               <span className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${done ? "bg-brand-deep text-white" : current ? "bg-brand-tint text-brand-deep shadow-[inset_0_0_0_2px_var(--brand)]" : "bg-[var(--ivory-deep)] text-[var(--ink-soft)]"}`}>
                 {done ? <Check className="h-4 w-4" aria-hidden="true" /> : index + 1}
               </span>
-              <span className={`mt-2 text-center text-[11px] font-semibold leading-tight ${index <= currentIndex ? "text-[var(--ink)]" : "text-[var(--ink-soft)]"}`}>{step.label}</span>
+              <span className={`pt-1.5 text-sm font-semibold ${index <= currentIndex ? "text-[var(--ink)]" : "text-[var(--ink-soft)]"}`}>{step.label}{current && <span className="block text-xs font-normal text-[var(--ink-soft)]">Current status</span>}</span>
             </li>
-          </Fragment>
         );
       })}
     </ol>
