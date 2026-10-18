@@ -1,5 +1,12 @@
 # Changelog
 
+## Public landing page
+
+- Replaced the placeholder home page at `/` with a real Nextdoor Basket landing page: hero, how it works, a list of active shops (read from the public `shops` policy), a section for shop owners, and legal links.
+- If the catalogue cannot be reached the page still renders and shows an empty-state message, not an error.
+- The placeholder shop is labelled "Demo store (sample data)" in the list.
+- Checked with lint, a production build and a 390px-wide browser render (no horizontal scroll). Not checked against a live Supabase project, so the shop list itself is untested.
+
 ## Sectioned browsing + real trust signal
 
 - The "All" view now groups products into category sections with
