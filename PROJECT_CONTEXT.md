@@ -1,6 +1,6 @@
 # Nextdoor Basket — Project Context (handoff for a new project/session)
 
-Generated 2026-10-18 from the repo `rakeshbrahmandlapalli-png/save_the_locals` (branch `ccr-d987113d-ef9vfg`, same as `main` at commit `295c274`). Everything below was read from the code, migrations, CHANGELOG.md and DECISIONS.md. Things I could not confirm from the repo are marked **(unverified)**.
+Generated 2026-10-18 from the repo `rakeshbrahmandlapalli-png/save_the_locals`; last updated 2026-10-18 against `main` at commit `1386a36`. Everything below was read from the code, migrations, CHANGELOG.md and DECISIONS.md, except section 10, which was checked against the live Supabase project and site. Things that could not be confirmed are marked **(unverified)**.
 
 ## 1. What it is
 
@@ -15,7 +15,7 @@ Generated 2026-10-18 from the repo `rakeshbrahmandlapalli-png/save_the_locals` (
 - Supabase (Postgres 17, Auth, Realtime, Edge Functions): `@supabase/supabase-js` 2.57.4, `@supabase/ssr` 0.7.0.
 - Env vars (`.env.example`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 - Fonts: Inter + Fraunces (Google fonts). Scripts: `dev`, `build`, `start`, `lint`.
-- Hosting: the `next.config.ts` comment mentions Vercel restoring `.next/cache`, so it is deployed on Vercel **(unverified)**. Turbopack's build cache is disabled (`experimental.turbopackFileSystemCacheForBuild: false`) because production once shipped stale CSS.
+- Hosting: Vercel project `save_the_locals` (team `rakeshbrahmandlapalli-pngs-projects`), live at https://savethelocals.vercel.app (verified 2026-10-18). Turbopack's build cache is disabled (`experimental.turbopackFileSystemCacheForBuild: false`) because production once shipped stale CSS.
 - **IMPORTANT (AGENTS.md):** this Next.js version has breaking changes vs. what models know. Read the relevant guide in `node_modules/next/dist/docs/` before writing Next code and heed deprecations.
 
 ## 3. Repo layout
@@ -82,6 +82,8 @@ Latest redesign (commits "Redesign storefront as Nextdoor Basket", "shelf-label 
 
 ## 7. Git history (newest first)
 
+1. `1386a36` Add public landing page at / (#2)
+1. `8862f0d` Add PROJECT_CONTEXT.md handoff summary (#1)
 1. `295c274` Business management: onboarding, owner invites, cancellations, support, commission
 2. `4810292` Disable Turbopack build cache (stale CSS fix)
 3. `4cad7d4` Redesign storefront as Nextdoor Basket
@@ -97,12 +99,13 @@ Latest redesign (commits "Redesign storefront as Nextdoor Basket", "shelf-label 
 ## 8. Known gaps / caveats / next steps
 
 - **Legal pages are unreviewed drafts.** DECISIONS.md/CHANGELOG say an Indian legal professional must review Privacy/Terms/Refund before money changes hands or the pilot goes beyond a small known group.
-- Landing page at `/` exists, with a simple list of active shops. There is still no search, location filter or contact/enquiry route for shops that want to join (no contact details are published because none are recorded in the repo). The shop list is untested against a live database.
+- Landing page at `/` exists, with a simple list of active shops. There is still no search, location filter or contact/enquiry route for shops that want to join (no contact details are published because none are recorded in the repo). The shop list renders on the live site (verified 2026-10-18; shows only the demo store).
 - Seed data is a single placeholder shop; real shops are created via `/admin` (inactive until an owner is invited and a product exists).
 - Service worker offline behaviour was code-reviewed, **not tested offline** (per DECISIONS.md).
 - Commission is accrual-only; no payment, invoicing or settlement automation. No online payment gateway.
-- New-order email depends on a Database Webhook configured in the Supabase dashboard (not in a migration) **(deployment state unverified)**.
-- Whether the Supabase project has all migrations applied, and the production URL, are **unverified** from the repo.
+- New-order email: live and working (see section 10). Note it is a pg_net trigger from migration `005`, not a dashboard Database Webhook as older notes say; the live function holds the real secret, the repo copy holds a placeholder.
+- Leaked-password protection is off in Supabase Auth (advisor warning). Turning it on is a dashboard setting.
+- Supabase migration history needs repairing before the CLI is used for migrations (see section 10).
 - Founder metrics are computed client-side (fine for pilot volume; move to SQL if volume grows).
 - The support-request customer UI (calling `submit_order_support`) — the RPC and owner/admin handling exist; I did not confirm a customer-facing form on the status page **(unverified)**.
 
@@ -113,3 +116,14 @@ Latest redesign (commits "Redesign storefront as Nextdoor Basket", "shelf-label 
 - Every new feature gets a CHANGELOG entry and non-obvious trade-offs go in DECISIONS.md.
 - Keep UI strings in `src/lib/copy.ts`; shop-specific values (name, colour, logo) come from the shop row, never hard-coded.
 - Prefer real signals over manufactured ones (e.g. trust badge only shows true counts).
+
+## 10. Live deployment state (checked 2026-10-18)
+
+- **Supabase project:** `SAVE THE LOCALS` (ref `qpgcujatczxfbtvurfan`, region ap-south-1, Postgres 17.6, healthy).
+- **Schema:** every table, column and function the repo's migrations define exists live (12 tables, all with RLS on; `categories.icon` present; all 16 public RPCs present; commission and new-order-email triggers on `orders`). So all migrations are effectively applied.
+- **Migration history is incomplete:** Supabase's history records only 4 migrations (`shop_order_count` and the three business ones, with timestamps that differ from the repo filenames). `001`–`007` were applied outside the CLI (likely the SQL editor). Running `supabase db push` against this project would try to re-apply them. Repair the history (`supabase migration repair`) before using the CLI for migrations.
+- **Data:** 1 shop (`placeholder-manikonda`, active, demo data), 20 products, 26 orders (all test, last on 2026-10-06, none delivered), 1 platform admin, 1 staff member, 0 invites, 0 commission records, 0 support requests. No real shop has been onboarded yet.
+- **New-order email:** edge function `new-order-email` is deployed (v3). The last 5 calls from the trigger returned HTTP 200.
+- **Advisor warnings:** `notify_new_order()` and `rls_auto_enable()` are still executable by `anon`/`authenticated` even though migration `…065226` revokes them from `anon`, because PostgreSQL also grants EXECUTE to `PUBLIC`. Both are trigger/event-trigger functions, which PostgreSQL refuses to run when called directly, so the practical risk is low. To silence the warning, `revoke execute … from public`. The other security-definer warnings are the intended public and staff RPCs.
+- **Vercel:** the deployment list could not be read with the connected Vercel account (403). The production site loads and its landing page lists the demo store.
+
