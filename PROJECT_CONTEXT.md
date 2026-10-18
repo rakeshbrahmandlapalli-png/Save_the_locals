@@ -22,7 +22,7 @@ Generated 2026-10-18 from the repo `rakeshbrahmandlapalli-png/save_the_locals` (
 
 ```
 src/app/
-  page.tsx                      placeholder home ("Project foundation is ready") — not the real landing page
+  page.tsx                      public landing page: hero, how it works, active-shop list, shop-owner section, legal links
   layout.tsx                    metadata "Nextdoor Basket", viewport-fit=cover
   globals.css                   design tokens + component classes (.input, .btn-primary, .brand-lockup…)
   s/[slug]/                     CUSTOMER STOREFRONT (server page + client Storefront)
@@ -97,7 +97,7 @@ Latest redesign (commits "Redesign storefront as Nextdoor Basket", "shelf-label 
 ## 8. Known gaps / caveats / next steps
 
 - **Legal pages are unreviewed drafts.** DECISIONS.md/CHANGELOG say an Indian legal professional must review Privacy/Terms/Refund before money changes hands or the pilot goes beyond a small known group.
-- Root `/` page is still a placeholder; there is no marketplace/landing or shop discovery page.
+- Landing page at `/` exists, with a simple list of active shops. There is still no search, location filter or contact/enquiry route for shops that want to join (no contact details are published because none are recorded in the repo). The shop list is untested against a live database.
 - Seed data is a single placeholder shop; real shops are created via `/admin` (inactive until an owner is invited and a product exists).
 - Service worker offline behaviour was code-reviewed, **not tested offline** (per DECISIONS.md).
 - Commission is accrual-only; no payment, invoicing or settlement automation. No online payment gateway.
